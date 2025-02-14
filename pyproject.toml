@@ -1,0 +1,50 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools>=64"]
+
+[project]
+authors = [
+  {email = "hello@futurehouse.org", name = "FutureHouse technical staff"}
+]
+dependencies = [
+  "aiodocker",
+  "fhaviary[server] >= 0.18.0",
+  "ldp",
+  "pandas",
+  "numpy",
+  "matplotlib",
+  "rpy2",
+  "scipy",
+  "seaborn",
+  "scikit-learn",
+  "statsmodels",
+  "aiofiles",
+  "google-auth",
+  "google-cloud-storage",
+  "google-cloud-secret-manager",
+  "crow-client",
+  "jupyter",
+  "nbconvert",
+  "notebook",
+  "nbformat"
+]
+description = "Data analysis crow"
+name = "data-analysis"
+requires-python = ">=3.12"
+version = "0.0.1"
+
+[project.optional-dependencies]
+dev = [
+  "black",
+  "isort",
+  "mypy",
+  "pre-commit",
+  "pytest",
+  "pytest-asyncio",
+  "pytest-cov",
+  "ruff"
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = ["app"]

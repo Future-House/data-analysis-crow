@@ -1,0 +1,93 @@
+---
+default_language_version:
+  python: python3
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-byte-order-marker
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: check-shebang-scripts-are-executable
+      - id: check-symlinks
+      - id: check-toml
+      - id: check-yaml
+      - id: debug-statements
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+      - id: trailing-whitespace
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.1
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+  - repo: https://github.com/rbubley/mirrors-prettier
+    rev: v3.4.2
+    hooks:
+      - id: prettier
+  - repo: https://github.com/jumanjihouse/pre-commit-hooks
+    rev: 3.0.0
+    hooks:
+      - id: check-mailmap
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.3.0
+    hooks:
+      - id: codespell
+        additional_dependencies: [".[toml]"]
+        exclude_types: [jupyter]
+  - repo: https://github.com/pappasam/toml-sort
+    rev: v0.24.2
+    hooks:
+      - id: toml-sort-fix
+        exclude: poetry.lock
+  - repo: https://github.com/srstevenson/nb-clean
+    rev: 4.0.1
+    hooks:
+      - id: nb-clean
+        args: [--preserve-cell-outputs, --remove-empty-cells]
+  - repo: https://github.com/henryiii/validate-pyproject-schema-store
+    rev: 2025.01.10
+    hooks:
+      - id: validate-pyproject
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.14.1
+    hooks:
+      - id: mypy
+        additional_dependencies:
+          - aiohttp
+          - boto3-stubs[s3]
+          - docstring_parser
+          - fh-llm-client[deepseek]>=0.0.11 # Match aviary_internal pyproject.toml
+          - fhaviary[server] >= 0.18.0 # Match aviary_internal pyproject.toml
+          - gitpython
+          - google-auth>=2.31 # Match aviary_internal pyproject.toml
+          - google-cloud
+          - google-cloud-run
+          - google-cloud-tasks
+          - google-cloud-secret-manager
+          - google-cloud-storage
+          - httpx<0.28 # Match aviary_internal pyproject.toml
+          - jupyter-client
+          - ldp>=0.22.0 # Match aviary_internal pyproject.toml
+          - litellm>=1.40.9 # Match aviary_internal pyproject.toml
+          - nbformat
+          - numpy<2 # Match aviary_internal pyproject.toml
+          - omegaconf
+          - openai>=1 # Match aviary_internal pyproject.toml
+          - pandas-stubs
+          - pydantic~=2.0 # Match aviary_internal pyproject.toml
+          - rich
+          - SQLAlchemy[aiosqlite]~=2.0 # Match fhaviary pyproject.toml and dev-requirements.txt
+          - tenacity
+          - tiktoken
+          - torch==2.5.1 # Match aviary_internal/nn/requirements.txt
+          - types-aiofiles
+          - types-Pillow
+          - types-PyYAML
+          - types-requests
+          - types-tqdm
+          - typing-extensions
+          - wandb

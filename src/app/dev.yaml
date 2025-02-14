@@ -1,0 +1,9 @@
+job:
+  cpu: 2
+  memory: 4Gi
+  timeout: 1200s
+env:
+  CROW_AGENT: ldp.agent.SimpleAgent
+  CROW_ENVIRONMENT: data_analysis.env.DataAnalysisEnv
+  OPENAI_API_KEY: gcsm:crow-openai-api-key
+  ANTHROPIC_API_KEY: gcsm:crow-anthropic-api-key
