@@ -1,6 +1,7 @@
 import os
 
 USE_DOCKER = bool(os.getenv("USE_DOCKER", "false").lower() == "true")
+USE_R = bool(os.getenv("USE_R", "false").lower() == "true")
 NB_ENVIRONMENT_DOCKER_IMAGE = os.getenv(
     "NB_ENVIRONMENT_DOCKER_IMAGE", "aviary-notebook-env"
 )
