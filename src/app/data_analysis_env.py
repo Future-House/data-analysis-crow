@@ -174,12 +174,14 @@ Here is the user query to address:
         if language == NBLanguage.R:
             augmented_task += f"\n{prompts.R_OUTPUT_RECOMMENDATION_PROMPT}"
         # Create temporary directory in GCP mounted storage volume
-        trajectory_path = Path("storage") / f"{task_hash}-{time.time()}"
+        trajectory_path = Path("/storage") / f"{task_hash}-{time.time()}"
         trajectory_path.mkdir(parents=True, exist_ok=True)
         notebook_name = NBEnvironment.NOTEBOOK_NAME
         nb_path = trajectory_path / notebook_name
         # Copy task data to trajectory path
-        for item in (Path("storage") / data_path).iterdir():
+        import os
+        print(os.listdir())
+        for item in (Path("/storage") / data_path).iterdir():
             if item.is_file():
                 shutil.copy2(item, trajectory_path)
             elif item.is_dir():
