@@ -45,4 +45,7 @@ dev = [
 ]
 
 [tool.setuptools]
-packages = ["app"]
+package-dir = {"" = "app"}
+
+[tool.setuptools.packages]
+find = {where = ["app"]}
