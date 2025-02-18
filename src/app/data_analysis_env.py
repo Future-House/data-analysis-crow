@@ -2,7 +2,6 @@ import hashlib
 import json
 import logging
 import shutil
-from pathlib import Path
 from typing import Any, cast
 import time
 from aviary.core import (
@@ -15,8 +14,9 @@ from aviary.core import (
 )
 
 from .notebook_env import NBEnvironment
-from .utils import NBLanguage, MultipleChoiceQuestion
+from .utils import NBLanguage, MultipleChoiceQuestion, nb_to_html
 from . import prompts
+from . import config as cfg
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +79,6 @@ class DataAnalysisEnv(NBEnvironment):
         self.state.done = True
         correct = False
         logger.info("Answer: %s", answer)
-
         if isinstance(self.answer, int):
             try:
                 answer = int(answer)  # type: ignore[arg-type]
@@ -174,14 +173,15 @@ Here is the user query to address:
         if language == NBLanguage.R:
             augmented_task += f"\n{prompts.R_OUTPUT_RECOMMENDATION_PROMPT}"
         # Create temporary directory in GCP mounted storage volume
-        trajectory_path = Path("/storage") / f"{task_hash}-{time.time()}"
+        trajectory_path = cfg.DATA_STORAGE_PATH / f"{task_hash}-{time.time()}"
         trajectory_path.mkdir(parents=True, exist_ok=True)
         notebook_name = NBEnvironment.NOTEBOOK_NAME
         nb_path = trajectory_path / notebook_name
         # Copy task data to trajectory path
         import os
+
         print(os.listdir())
-        for item in (Path("/storage") / data_path).iterdir():
+        for item in (cfg.DATA_STORAGE_PATH / data_path).iterdir():
             if item.is_file():
                 shutil.copy2(item, trajectory_path)
             elif item.is_dir():
@@ -206,6 +206,7 @@ Here is the user query to address:
                 "done": self.state.done,
                 "total_reward": self.state.total_reward,
                 "nb_state": self.state.nb,
+                "nb_state_html": nb_to_html(self.state.nb),
             },
             info={
                 "eval_mode": self.eval_mode,

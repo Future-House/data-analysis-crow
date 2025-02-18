@@ -6,6 +6,8 @@ from crow_client.models import (
     CrowDeploymentConfig,
     DockerContainerConfiguration,
     Stage,
+    FramePath,
+    AuthType,
 )
 
 ENV_VARS = {
@@ -13,9 +15,15 @@ ENV_VARS = {
     "ANTHROPIC_API_KEY": os.environ["ANTHROPIC_API_KEY"],
     "USE_R": "false",
     "USE_DOCKER": "false",
+    "STAGE": "DEV",
 }
 
 CONTAINER_CONFIG = DockerContainerConfiguration(cpu="2", memory="4Gi")
+
+frame_paths = [
+    FramePath(path="state.answer", type="text"),
+    FramePath(path="state.nb_state_html", type="notebook"),
+]
 
 CROWS_TO_DEPLOY = [
     CrowDeploymentConfig(
@@ -27,12 +35,15 @@ CROWS_TO_DEPLOY = [
         agent="ldp.agent.ReActAgent",
         container_config=CONTAINER_CONFIG,
         force=True,
+        frame_paths=frame_paths,
     ),
 ]
 
 if __name__ == "__main__":
     client = CrowClient(
-        stage=Stage.from_string(os.environ["CROW_ENV"]), organization="FutureHouse"
+        stage=Stage.from_string(os.environ.get("CROW_ENV", "DEV")),
+        organization="FutureHouse",
+        auth_type=AuthType.GOOGLE,
     )
     for crow in CROWS_TO_DEPLOY:
         try:
