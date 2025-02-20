@@ -21,7 +21,7 @@ dependencies = [
   "google-auth",
   "google-cloud-storage",
   "google-cloud-secret-manager",
-  "crow-client >= 0.3.2",
+  "crow-client >= 0.3.4",
   "jupyter",
   "nbconvert",
   "notebook",

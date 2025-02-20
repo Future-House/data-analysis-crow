@@ -18,8 +18,8 @@ The notebook should contain all necessary artifacts (plots, tables, print output
 """
 
 CAPSULE_SYSTEM_PROMPT_QUERY = """
-You are an expert bioinformatician and seasoned biological data scientist.
-Your task is to create a comprehensive Jupyter notebook named 'notebook.ipynb' that analyzes data to answer a user query
+You are an expert data scientist.
+Your task is to create a comprehensive Jupyter notebook named 'notebook.ipynb' that thoroughly analyzes data to answer a user query
 The notebook should contain all necessary artifacts (plots, tables, print outputs, code commentary) to fully answer the query.
 """
 

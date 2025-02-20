@@ -43,7 +43,8 @@ if __name__ == "__main__":
     client = CrowClient(
         stage=Stage.from_string(os.environ.get("CROW_ENV", "DEV")),
         organization="FutureHouse",
-        auth_type=AuthType.GOOGLE,
+        auth_type=AuthType.API_KEY,
+        api_key=os.environ["CROW_API_KEY"],
     )
     for crow in CROWS_TO_DEPLOY:
         try:
