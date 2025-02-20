@@ -1,8 +1,8 @@
 import hashlib
 import json
 import logging
-import shutil
 from pathlib import Path
+import shutil
 from typing import Any, cast
 import time
 from aviary.core import (
@@ -15,8 +15,9 @@ from aviary.core import (
 )
 
 from .notebook_env import NBEnvironment
-from .utils import NBLanguage, MultipleChoiceQuestion
+from .utils import NBLanguage, MultipleChoiceQuestion, nb_to_html
 from . import prompts
+from . import config as cfg
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +80,6 @@ class DataAnalysisEnv(NBEnvironment):
         self.state.done = True
         correct = False
         logger.info("Answer: %s", answer)
-
         if isinstance(self.answer, int):
             try:
                 answer = int(answer)  # type: ignore[arg-type]
@@ -145,7 +145,9 @@ class DataAnalysisEnv(NBEnvironment):
         return INCORRECT_MSG
 
     @classmethod
-    def from_task(cls, task: str) -> "DataAnalysisEnv":
+    def from_task(
+        cls, task: str, gcs_artifact_path: str | None = None
+    ) -> "DataAnalysisEnv":
         """
         Perform data analysis on a user query.
 
@@ -154,12 +156,34 @@ class DataAnalysisEnv(NBEnvironment):
 
         eg "CaspuleFolder-a7812fg | How many genes are differentially expressed between the two conditions?"
         """
+        logger.info("User task: %s", task)
+        logger.info("GCS artifact path: %s", gcs_artifact_path)
 
-        language = NBLanguage.PYTHON  # In future, this should be a hyperparameter
-        # Hash the task to get a unique identifier
-        task_hash = hashlib.sha256(task.encode()).hexdigest()
-        # Extract data path and query from task
-        data_path, query = task.split("|")
+        if (
+            gcs_artifact_path
+        ):  # The files are already in the GCS bucket in a job-specific directory
+            trajectory_path = cfg.DATA_STORAGE_PATH / gcs_artifact_path
+            nb_path = trajectory_path / NBEnvironment.NOTEBOOK_NAME
+            query = task
+            task_hash = gcs_artifact_path
+        else:
+            # Extract data path and query from task
+            data_path, query = task.split("|")
+            # Hash the task to get a unique identifier
+            task_hash = hashlib.sha256(task.encode()).hexdigest()
+            # Create temporary directory in GCP mounted storage volume
+            trajectory_path = cfg.DATA_STORAGE_PATH / f"{task_hash}-{time.time()}"
+            trajectory_path.mkdir(parents=True, exist_ok=True)
+            nb_path = trajectory_path / NBEnvironment.NOTEBOOK_NAME
+            # Copy task data to trajectory path
+            for item in (cfg.DATA_STORAGE_PATH / data_path).iterdir():
+                if item.is_file():
+                    shutil.copy2(item, trajectory_path)
+                elif item.is_dir():
+                    shutil.copytree(
+                        item, trajectory_path / item.name, dirs_exist_ok=True
+                    )
+
         # Augment incoming task with CoT instructions
         augmented_task = f"""\
 Here is the user query to address:
@@ -171,19 +195,35 @@ Here is the user query to address:
 {prompts.CHAIN_OF_THOUGHT_AGNOSTIC}
 {prompts.GENERAL_NOTEBOOK_GUIDELINES}"""
 
+        language = NBLanguage.PYTHON  # In future, this should be a hyperparameter
         if language == NBLanguage.R:
             augmented_task += f"\n{prompts.R_OUTPUT_RECOMMENDATION_PROMPT}"
-        # Create temporary directory in GCP mounted storage volume
-        trajectory_path = Path("storage") / f"{task_hash}-{time.time()}"
-        trajectory_path.mkdir(parents=True, exist_ok=True)
-        notebook_name = NBEnvironment.NOTEBOOK_NAME
-        nb_path = trajectory_path / notebook_name
-        # Copy task data to trajectory path
-        for item in (Path("storage") / data_path).iterdir():
-            if item.is_file():
-                shutil.copy2(item, trajectory_path)
-            elif item.is_dir():
-                shutil.copytree(item, trajectory_path / item.name, dirs_exist_ok=True)
+
+        # Log all parameters being passed to constructor
+        logger.info(
+            "Creating DataAnalysisEnv with parameters: "
+            "problem_id=data-analysis-task-%s, "
+            "problem=%s, "
+            "eval_mode=%s, "
+            "nb_path=%s, "
+            "work_dir=%s, "
+            "language=%s, "
+            "system_prompt=%s, "
+            "use_tmp_work_dir=%s, "
+            "gcs_artifact_path=%s",
+            task_hash,
+            augmented_task,
+            EvalAnswerMode.LLM,
+            nb_path,
+            trajectory_path,
+            language,
+            prompts.CAPSULE_SYSTEM_PROMPT_QUERY,
+            False,
+            gcs_artifact_path
+        )
+        if trajectory_path.exists():
+            logger.info("Files in directory: %s", [f.name for f in trajectory_path.iterdir()])
+
 
         return cls(
             problem_id=f"data-analysis-task-{task_hash}",
@@ -204,6 +244,7 @@ Here is the user query to address:
                 "done": self.state.done,
                 "total_reward": self.state.total_reward,
                 "nb_state": self.state.nb,
+                "nb_state_html": nb_to_html(self.state.nb),
             },
             info={
                 "eval_mode": self.eval_mode,

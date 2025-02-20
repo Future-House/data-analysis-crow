@@ -49,8 +49,9 @@ class NBEnvironmentState:
             self.reload_nb()
         else:
             self.nb = nbformat.v4.new_notebook()
-            # Add initial cell with rpy2 extension load
-            nbformat.v4.new_code_cell(source="%load_ext rpy2.ipython")
+            if cfg.USE_R:
+                # Add initial cell with rpy2 extension load
+                nbformat.v4.new_code_cell(source="%load_ext rpy2.ipython")
             self.nb.metadata.kernelspec = self.language.make_kernelspec()
 
     def save_nb(self):
@@ -72,7 +73,6 @@ class NBEnvironmentState:
 
     async def start_kernel(self):
         kernel_name = self.language.make_kernelspec()["name"]
-        print(f"KERNEL self.work_dir: {self.work_dir}")
         self.kernel_manager = AsyncKernelManager(kernel_name=kernel_name)
         await self.kernel_manager.start_kernel(cwd=str(self.work_dir))
 
@@ -146,15 +146,9 @@ class NBEnvironment(Environment[NBEnvironmentState]):
         self.language = language
         self.allow_download_from_gcs = allow_download_from_gcs
         self.use_docker = cfg.USE_DOCKER
-        print(f"self.work_dir: {self.work_dir}")
-        print(f"self.nb_path: {self.nb_path}")
-        print(f"self.use_tmp_work_dir: {self.use_tmp_work_dir}")
-        print(f"use_docker: {self.use_docker}")
 
     async def reset(self) -> tuple[Messages, list[Tool]]:
         nb_path, work_dir = self._set_work_dir()
-        print(f"nb_path: {nb_path}")
-        print(f"work_dir: {work_dir}")
         self.state = await NBEnvironmentState.create(
             nb_path=nb_path,
             work_dir=work_dir,
@@ -248,7 +242,7 @@ class NBEnvironment(Environment[NBEnvironmentState]):
 
         The contents is represented as a nested JSON dictionary.
         """
-        print(f"self.state.work_dir: {self.state.work_dir}")
+        logger.info("Listing working directory: %s", self.state.work_dir)
         return json.dumps(self._list_dir(self.state.work_dir), indent=2)
 
     # allowing int so that agent doesn't try to force to float
@@ -265,7 +259,7 @@ class NBEnvironment(Environment[NBEnvironmentState]):
         # We leave it to subclasses to implement evaluation logic.
         self.state.done = True
         self.state.answer = answer
-        print("ANSWER SUBMITTED", answer)
+        logger.info("Answer submitted: %s", answer)
         return "Answer submitted. Episode ended."
 
     # HELPERS

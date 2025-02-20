@@ -13,7 +13,6 @@ dependencies = [
   "pandas",
   "numpy",
   "matplotlib",
-  "rpy2",
   "scipy",
   "seaborn",
   "scikit-learn",
@@ -22,7 +21,7 @@ dependencies = [
   "google-auth",
   "google-cloud-storage",
   "google-cloud-secret-manager",
-  "crow-client",
+  "crow-client >= 0.3.4",
   "jupyter",
   "nbconvert",
   "notebook",
@@ -46,5 +45,7 @@ dev = [
 ]
 
 [tool.setuptools]
-package-dir = {"" = "src"}
-packages = ["app"]
+package-dir = {"" = "app"}
+
+[tool.setuptools.packages]
+find = {where = ["app"]}

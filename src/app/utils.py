@@ -4,8 +4,11 @@ import logging
 from collections.abc import Iterable
 from enum import StrEnum, auto
 from typing import TYPE_CHECKING, assert_never
+import os
 
 import nbformat
+from traitlets.config import Config
+from nbconvert import HTMLExporter
 from aiodocker.containers import DockerContainer
 from aviary.utils import MultipleChoiceQuestion
 
@@ -385,3 +388,19 @@ def load_mcq(
         prompt_without_options=open_question,
         question_id=question_id or "Q",
     )
+
+
+def nb_to_html(nb: nbformat.NotebookNode) -> str:
+    # This configuration is necessary for the HTMLExporter to find the templates on GCP Cloud Jobs
+    template_paths = [
+        os.path.join(os.path.dirname(__file__), "templates"),
+        os.path.join(os.path.dirname(__file__), "templates/base"),
+        os.path.join(os.path.dirname(__file__), "templates/lab"),
+    ]
+    c = Config()
+    c.TemplateExporter.template_paths = template_paths
+    c.TemplateExporter.template_name = "lab/index.html.j2"
+
+    exporter = HTMLExporter(config=c)
+    html, _ = exporter.from_notebook_node(nb)
+    return html
