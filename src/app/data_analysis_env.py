@@ -156,22 +156,16 @@ class DataAnalysisEnv(NBEnvironment):
 
         eg "CaspuleFolder-a7812fg | How many genes are differentially expressed between the two conditions?"
         """
-        print(f"task: {task}")
-        print(f"gcs_artifact_path: {gcs_artifact_path}")
+        logger.info("User task: %s", task)
+        logger.info("GCS artifact path: %s", gcs_artifact_path)
 
         if (
             gcs_artifact_path
         ):  # The files are already in the GCS bucket in a job-specific directory
-            print("Branching into GCS path")
             trajectory_path = cfg.DATA_STORAGE_PATH / gcs_artifact_path
             nb_path = trajectory_path / NBEnvironment.NOTEBOOK_NAME
             query = task
             task_hash = gcs_artifact_path
-            print(f"trajectory_path: {trajectory_path}")
-            print(f"nb_path: {nb_path}")
-            print(f"query: {query}")
-            print(f"task_hash: {task_hash}")
-
         else:
             # Extract data path and query from task
             data_path, query = task.split("|")
@@ -205,29 +199,32 @@ Here is the user query to address:
         if language == NBLanguage.R:
             augmented_task += f"\n{prompts.R_OUTPUT_RECOMMENDATION_PROMPT}"
 
-        try:
-            # Log all parameters being passed to constructor
-            logger_string = (
-                "Creating DataAnalysisEnv with parameters: "
-            f"problem_id=data-analysis-task-{task_hash}, "
-            f"problem={augmented_task}, "
-            f"eval_mode={EvalAnswerMode.LLM}, "
-            f"nb_path={nb_path}, "
-            f"work_dir={trajectory_path}, "
-            f"language={language}, "
-            f"system_prompt={prompts.CAPSULE_SYSTEM_PROMPT_QUERY}, "
-            f"use_tmp_work_dir=False"
-            f"gcs_artifact_path={gcs_artifact_path}"
-            )
-            print(logger_string)
-            if trajectory_path.exists():
-                print(f", files_in_dir={[f.name for f in trajectory_path.iterdir()]}")
+        # Log all parameters being passed to constructor
+        logger.info(
+            "Creating DataAnalysisEnv with parameters: "
+            "problem_id=data-analysis-task-%s, "
+            "problem=%s, "
+            "eval_mode=%s, "
+            "nb_path=%s, "
+            "work_dir=%s, "
+            "language=%s, "
+            "system_prompt=%s, "
+            "use_tmp_work_dir=%s, "
+            "gcs_artifact_path=%s",
+            task_hash,
+            augmented_task,
+            EvalAnswerMode.LLM,
+            nb_path,
+            trajectory_path,
+            language,
+            prompts.CAPSULE_SYSTEM_PROMPT_QUERY,
+            False,
+            gcs_artifact_path
+        )
+        if trajectory_path.exists():
+            logger.info("Files in directory: %s", [f.name for f in trajectory_path.iterdir()])
 
-        except Exception as e:
-            print(f"Error: {e}")
 
-
-        logger.info(logger_string)
         return cls(
             problem_id=f"data-analysis-task-{task_hash}",
             problem=augmented_task,
