@@ -189,26 +189,7 @@ submit_answer({{
 Remember, the final notebook should contain all necessary artifacts (plots, tables, print outputs) to solve the task provided.
 """
 
-# Templates for different prompt versions
-CAPSULE_PROMPT_TEMPLATES = {
-    # Default template
-    "v1.0": (
-        "Using the available data, write a Jupyter notebook (`{notebook_name}`) to prove "
-        'or disprove the following hypothesis: "{hypothesis}". The final answer you submit must be '
-        '"True" or "False" - nothing else. You must use the `submit_answer` tool for this.'
-    ),
-    "v1.1": (
-        "TASK: Imagine you are a very skilled bioinformatician and data scientist. "
-        "Using the available data, write a Jupyter notebook (`{notebook_name}`) to prove "
-        'or disprove the following hypothesis: "{hypothesis}". '
-        "OUTPUT: The final answer you submit must be 'True' or 'False' - nothing else. "
-        "Recommendations: "
-        "1. Ensure that each cell has executed successfully before moving on to the next cell. "
-        "2. To solve this hypothesis you MUST use the {language} programming language. "
-        "3. We recommend you follow these steps: {analysis}. "
-        "4. And we recommend you use the following library packages: {packages}."
-    ),
-    "v1.2": f"""
+HYPOTHESIS_PROMPT_TEMPLATE = f"""
 
 Here is the hypothesis you need to address:
 
@@ -220,9 +201,9 @@ Here is the hypothesis you need to address:
 {SUBMIT_ANSWER_HYPOTHESIS}
 {GENERAL_NOTEBOOK_GUIDELINES}
 {R_OUTPUT_RECOMMENDATION_PROMPT}
-""",
+"""
     # MCQ
-    "v1.3.1": f"""
+MCQ_PROMPT_TEMPLATE = f"""
 Here are the questions you need to address:
 <questions>
 {{questions}}
@@ -232,9 +213,9 @@ Here are the questions you need to address:
 {SUBMIT_ANSWER_MCQ}
 {GENERAL_NOTEBOOK_GUIDELINES}
 {R_OUTPUT_RECOMMENDATION_PROMPT}
-""",
+"""
     # Open answer
-    "v1.3.2": f"""
+OPEN_PROMPT_TEMPLATE = f"""
 Here are the questions you need to address:
 
 <questions>
@@ -245,5 +226,4 @@ Here are the questions you need to address:
 {SUBMIT_ANSWER_OPEN}
 {GENERAL_NOTEBOOK_GUIDELINES}
 {R_OUTPUT_RECOMMENDATION_PROMPT}
-""",
-}
+"""
