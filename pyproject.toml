@@ -50,5 +50,6 @@ run_expt = 'scripts.configurable:_run_expt'
 [tool.setuptools]
 package-dir = {"" = "src"}
 
-[tool.setuptools.packages]
-find = {where = ["src"]}
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["*", "app.*", "expts.*", "scripts.*"]
