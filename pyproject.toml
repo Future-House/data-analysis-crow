@@ -28,7 +28,7 @@ dependencies = [
   "nbformat"
 ]
 description = "Data analysis crow"
-name = "data-analysis"
+name = "fh_data_analysis"
 requires-python = ">=3.12"
 version = "0.0.1"
 
