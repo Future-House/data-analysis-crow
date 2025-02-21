@@ -44,8 +44,11 @@ dev = [
   "ruff"
 ]
 
+[project.scripts]
+run_expt = 'scripts.configurable:_run_expt'
+
 [tool.setuptools]
-package-dir = {"" = "app"}
+package-dir = {"" = "src"}
 
 [tool.setuptools.packages]
-find = {where = ["app"]}
+find = {where = ["src"]}

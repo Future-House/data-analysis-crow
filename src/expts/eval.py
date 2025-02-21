@@ -7,8 +7,10 @@ from typing import Self, cast
 
 import litellm
 from aviary.core import EvalAnswerMode, TaskDatasetClient
-from aviary_internal import utils
-from aviary_internal.envs.notebook.utils import NBLanguage
+from scripts.config import ConfigModel, set_up_output_dir
+from scripts.configurable import ConfigurableExpt
+from app.utils import NBLanguage
+from app.storage import DataRepo
 from ldp.agent import Agent, AgentConfig
 from ldp.alg import Evaluator, EvaluatorConfig, TrajectoryFileCallback
 from ldp.alg.callbacks import Callback
@@ -17,7 +19,7 @@ from ldp.data_structures import Transition
 from llmclient.cost_tracker import enable_cost_tracking
 from pydantic import Field, model_validator
 
-from data_analysis.env import DataAnalysisEnv
+from app.data_analysis_env import DataAnalysisEnv
 
 from .client import TaskDatasetSplit
 from .common import (
@@ -29,15 +31,15 @@ from .common import (
 logger = logging.getLogger(__name__)
 
 
-class EnvServerConfig(utils.ConfigModel):
+class EnvServerConfig(ConfigModel):
     split: TaskDatasetSplit
     host: str = "localhost"
     port: int
     request_timeout: float | None = 300.0
 
 
-class NBEvalExpt(utils.ConfigurableExpt):
-    output_repo: utils.DataRepo
+class NBEvalExpt(ConfigurableExpt):
+    output_repo: DataRepo
     comment: str = ""
     overwrite: bool = False
 
@@ -63,19 +65,15 @@ class NBEvalExpt(utils.ConfigurableExpt):
         return self
 
     async def run(self) -> None:
-        utils.set_up_output_dir(self.output_repo.local_path, config=self)
-
+        set_up_output_dir(self.output_repo.local_path, config=self)
         dataset = await self.make_dataset()
         agent = self.agent.construct_agent()
-
         callbacks: list[Callback] = [
             TrajectoryFileCallback(self.output_repo.local_path),
             LoggingCallback(self.output_repo),
             SaveWorkspaceCallback(
                 dataset_client=dataset,
-                workspace_repo=utils.DataRepo(
-                    name=f"{self.output_repo.name}-workspaces"
-                ),
+                workspace_repo=DataRepo(name=f"{self.output_repo.name}-workspaces"),
             ),
         ]
         if self.evaluator.batch_size == 1:
@@ -123,7 +121,7 @@ class AdHocExptCallback(Callback):
                     json.dump(submitted_answers, f, indent=2)
 
 
-class AdHocExpt(utils.ConfigurableExpt):
+class AdHocExpt(ConfigurableExpt):
     problem: str = Field(description="Problem to solve.")
     problem_id: str = Field(
         default_factory=lambda: f"analysis-{datetime.now().strftime('%Y%m%d-%H%M%S')}",
@@ -132,7 +130,7 @@ class AdHocExpt(utils.ConfigurableExpt):
     )
 
     input_dir: str = Field(description="Directory containing input data.")
-    input_repo: utils.DataRepo | None = Field(
+    input_repo: DataRepo | None = Field(
         default=None,
         description="If provided, will set `input_dir` to `input_repo.local_path`.",
     )
@@ -142,7 +140,7 @@ class AdHocExpt(utils.ConfigurableExpt):
         description="Directory to save output notebooks. "
         "If not provided, will use `input_dir`.",
     )
-    output_repo: utils.DataRepo | None = Field(
+    output_repo: DataRepo | None = Field(
         default=None,
         description="If provided, will set `output_dir` to `output_repo.local_path`.",
     )
@@ -204,7 +202,7 @@ class AdHocExpt(utils.ConfigurableExpt):
                     assert f"{pfx}_dir" not in data, (
                         f"Cannot provide both {pfx}_dir and {pfx}_repo"
                     )
-                    data[f"{pfx}_repo"] = utils.DataRepo(**data[f"{pfx}_repo"])
+                    data[f"{pfx}_repo"] = DataRepo(**data[f"{pfx}_repo"])
                     data[f"{pfx}_dir"] = data[f"{pfx}_repo"].local_path
         return data
 
