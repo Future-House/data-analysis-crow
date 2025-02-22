@@ -28,7 +28,7 @@ dependencies = [
   "nbformat"
 ]
 description = "Data analysis crow"
-name = "data-analysis"
+name = "fhda"
 requires-python = ">=3.12"
 version = "0.0.1"
 
@@ -44,8 +44,11 @@ dev = [
   "ruff"
 ]
 
-[tool.setuptools]
-package-dir = {"" = "app"}
+[project.scripts]
+run_expt = 'scripts.configurable:_run_expt'
 
-[tool.setuptools.packages]
-find = {where = ["app"]}
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

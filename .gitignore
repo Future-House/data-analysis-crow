@@ -67,7 +67,7 @@ MANIFEST
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
-
+src/fhda/storage/
 # Unit test / coverage reports
 htmlcov/
 .tox/

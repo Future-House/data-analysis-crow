@@ -8,19 +8,13 @@ from pathlib import Path
 from typing import Generic, TypeVar
 
 from aviary.core import TaskDataset, TaskDatasetServer
-from aviary_internal import utils
-from aviary_internal.envs.notebook.utils import collect_notebook_stats
+from app.storage import DataRepo
+from app.utils import collect_notebook_stats
+from app.data_analysis_env import DataAnalysisEnv
+from app.dataset import CapsuleDataset, CapsuleDatasetConfig
+from scripts.configurable import ConfigurableExpt
 from pydantic import BaseModel, Field
 
-from data_analysis.env import (
-    BigCodeBenchConfig,
-    BigCodeBenchDataset,
-    CapsuleDataset,
-    CapsuleDatasetConfig,
-    DataAnalysisEnv,
-    DSBenchConfig,
-    DSBenchDataset,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +22,7 @@ logger = logging.getLogger(__name__)
 class SaveWorkspaceRequest(BaseModel):
     env_id: str
     traj_id: str
-    workspace_repo: utils.DataRepo
+    workspace_repo: DataRepo
     exception: bool
     cost: float
     time: float
@@ -44,7 +38,7 @@ class NBTaskDatasetServer(TaskDatasetServer[DataAnalysisEnv]):
                 env = self._get_env(req.env_id)
 
             problem_id = env.problem_id
-            this_workspace_repo = utils.DataRepo(
+            this_workspace_repo = DataRepo(
                 name=f"{req.workspace_repo.name}/{problem_id.replace('/', '-')}-{req.traj_id}"
             )
             this_workspace_repo.mkdir()
@@ -94,7 +88,7 @@ class NBTaskDatasetServer(TaskDatasetServer[DataAnalysisEnv]):
 TDataset = TypeVar("TDataset", bound=TaskDataset)
 
 
-class DatasetServer(utils.ConfigurableExpt, ABC, Generic[TDataset]):
+class DatasetServer(ConfigurableExpt, ABC, Generic[TDataset]):
     port: int
 
     @abstractmethod
@@ -113,17 +107,3 @@ class CapsuleDatasetServer(DatasetServer[CapsuleDataset]):
 
     def make_dataset(self) -> CapsuleDataset:
         return CapsuleDataset(config=self.dataset)
-
-
-class BCBDatasetServer(DatasetServer[BigCodeBenchDataset]):
-    dataset: BigCodeBenchConfig = Field(default_factory=BigCodeBenchConfig)
-
-    def make_dataset(self) -> BigCodeBenchDataset:
-        return BigCodeBenchDataset(self.dataset)
-
-
-class DSBenchDatasetServer(DatasetServer[DSBenchDataset]):
-    dataset: DSBenchConfig = Field(default_factory=DSBenchConfig)
-
-    def make_dataset(self) -> DSBenchDataset:
-        return DSBenchDataset(self.dataset)
