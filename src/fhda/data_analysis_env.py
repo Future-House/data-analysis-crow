@@ -78,6 +78,8 @@ class DataAnalysisEnv(NBEnvironment):
         # TODO: support various eval modes
         self.state.answer = answer
         self.state.done = True
+        logger.info("Submitting answer and closing environment")
+        await self.close()
         correct = False
         logger.info("Answer: %s", answer)
         if isinstance(self.answer, int):
@@ -219,11 +221,12 @@ Here is the user query to address:
             language,
             prompts.CAPSULE_SYSTEM_PROMPT_QUERY,
             False,
-            gcs_artifact_path
+            gcs_artifact_path,
         )
         if trajectory_path.exists():
-            logger.info("Files in directory: %s", [f.name for f in trajectory_path.iterdir()])
-
+            logger.info(
+                "Files in directory: %s", [f.name for f in trajectory_path.iterdir()]
+            )
 
         return cls(
             problem_id=f"data-analysis-task-{task_hash}",

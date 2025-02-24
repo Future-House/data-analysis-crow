@@ -8,10 +8,10 @@ from pathlib import Path
 from typing import Generic, TypeVar
 
 from aviary.core import TaskDataset, TaskDatasetServer
-from app.storage import DataRepo
-from app.utils import collect_notebook_stats
-from app.data_analysis_env import DataAnalysisEnv
-from app.dataset import CapsuleDataset, CapsuleDatasetConfig
+from fhda.storage import DataRepo
+from fhda.utils import collect_notebook_stats
+from fhda.data_analysis_env import DataAnalysisEnv
+from fhda.dataset import CapsuleDataset, CapsuleDatasetConfig
 from scripts.configurable import ConfigurableExpt
 from pydantic import BaseModel, Field
 

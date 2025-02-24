@@ -202,7 +202,7 @@ Here is the hypothesis you need to address:
 {GENERAL_NOTEBOOK_GUIDELINES}
 {R_OUTPUT_RECOMMENDATION_PROMPT}
 """
-    # MCQ
+# MCQ
 MCQ_PROMPT_TEMPLATE = f"""
 Here are the questions you need to address:
 <questions>
@@ -214,7 +214,7 @@ Here are the questions you need to address:
 {GENERAL_NOTEBOOK_GUIDELINES}
 {R_OUTPUT_RECOMMENDATION_PROMPT}
 """
-    # Open answer
+# Open answer
 OPEN_PROMPT_TEMPLATE = f"""
 Here are the questions you need to address:
 
