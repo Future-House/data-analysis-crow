@@ -9,8 +9,8 @@ import litellm
 from aviary.core import EvalAnswerMode, TaskDatasetClient
 from scripts.config import ConfigModel, set_up_output_dir
 from scripts.configurable import ConfigurableExpt
-from app.utils import NBLanguage
-from app.storage import DataRepo
+from fhda.utils import NBLanguage
+from fhda.storage import DataRepo
 from ldp.agent import Agent, AgentConfig
 from ldp.alg import Evaluator, EvaluatorConfig, TrajectoryFileCallback
 from ldp.alg.callbacks import Callback
@@ -19,7 +19,7 @@ from ldp.data_structures import Transition
 from llmclient.cost_tracker import enable_cost_tracking
 from pydantic import Field, model_validator
 
-from app.data_analysis_env import DataAnalysisEnv
+from fhda.data_analysis_env import DataAnalysisEnv
 
 from .client import TaskDatasetSplit
 from .common import (

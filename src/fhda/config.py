@@ -4,7 +4,7 @@ from pathlib import Path
 USE_DOCKER = bool(os.getenv("USE_DOCKER", "false").lower() == "true")
 USE_R = bool(os.getenv("USE_R", "false").lower() == "true")
 NB_ENVIRONMENT_DOCKER_IMAGE = os.getenv(
-    "NB_ENVIRONMENT_DOCKER_IMAGE", "aviary-notebook-env"
+    "NB_ENVIRONMENT_DOCKER_IMAGE", "futurehouse/bixbench:aviary-notebook-env"
 )
 
 # Some R error messages can be 100,000 of characters
