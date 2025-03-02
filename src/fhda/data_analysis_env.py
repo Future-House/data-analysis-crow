@@ -1,7 +1,6 @@
 import hashlib
 import json
 import logging
-from pathlib import Path
 import shutil
 from typing import Any, cast
 import time
@@ -82,6 +81,10 @@ class DataAnalysisEnv(NBEnvironment):
         await self.close()
         correct = False
         logger.info("Answer: %s", answer)
+
+        if self.eval_mode is None:
+            return CORRECT_MSG
+
         if isinstance(self.answer, int):
             try:
                 answer = int(answer)  # type: ignore[arg-type]

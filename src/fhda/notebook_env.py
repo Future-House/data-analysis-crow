@@ -350,7 +350,7 @@ class NBEnvironment(Environment[NBEnvironmentState]):
             # HACK: new assets written in /workspace are owned by the docker user, so we
             # cannot shutil.rmtree it. Need to revisit
             # Have to do this since wildcard expansion doesn't work
-            await self._exec_cmd(["sh", "-c", "rm -r /workspace/*"])
+            # await self._exec_cmd(["sh", "-c", "rm -r /workspace/*"])
             await self.state.close()
             await self.state.docker_client.close()
         else:
