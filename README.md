@@ -1,8 +1,8 @@
-# Data Analysis Crow: A Versatile Data Analysis Agent
+# Data Analysis Crow: A Jupyter Notebook Agent
 
-Data Analysis Crow is an AI agent framework designed to perform complex data analysis tasks by iteratively working through Jupyter notebooks. This agent takes in datasets and prompts, then systematically explores, analyzes, and interprets the data to provide comprehensive answers and insights.
+Data Analysis Crow is an AI agent framework designed to perform complex scientific data analysis tasks by iteratively working through Jupyter notebooks. This agent takes in datasets and prompts, then systematically explores, analyzes, and interprets the data to provide comprehensive answers and insights.
 
-The agent was used to produce the trajectories for the [BixBench benchmark](https://github.com/Future-House/bixbench), demonstrating its capabilities in handling complex bioinformatics tasks.
+The agent was used to produce the trajectories for the [BixBench benchmark](https://github.com/Future-House/bixbench).
 
 ## Key Features
 
@@ -10,15 +10,14 @@ The agent was used to produce the trajectories for the [BixBench benchmark](http
 - Iteratively builds Jupyter notebooks to answer research questions
 - Works with Python, R, and Bash code execution
 - Specializes in bioinformatics analysis but adaptable to various domains
-- Comes with a Docker image including typical bioinformatics packages
+- Comes with a Docker image including most common bioinformatics packages
 
 ## Links
 
 - [Installation](#installation)
 - [Using the Agent](#using-the-agent)
-- [Customizing the Agent](#customizing-the-agent)
+- [Advanced Usage](#advanced-usage)
 - [BixBench Benchmark](#bixbench-benchmark)
-- [Acknowledgments](#acknowledgments)
 
 ## Installation
 
@@ -49,7 +48,6 @@ ANTHROPIC_API_KEY = "your-anthropic-api-key"
 
 The agent works by taking a dataset and a prompt, then iteratively building a Jupyter notebook to answer the question. Visit the [tutorial](https://github.com/Future-House/data-analysis-crow/blob/main/tutorial/example.ipynb) for a simple step-by-step guide on how to use the agent.
 
-
 ## Advanced Usage
 For advanced evaluations, you can configure `server.yaml` and `runner.yaml` in the `src/scripts/bixbench_evaluation` directory and then run the evaluation script:
 ```bash
@@ -67,16 +65,6 @@ Results are saved in the output directory specified in your configuration file.
 Note that the dataset and environment configuration must be updated appropriately. For an example, see [dataset.py](https://github.com/Future-House/data-analysis-crow/blob/main/src/fhda/dataset.py) which includes the capsule dataset configuration used for the BixBench benchmark.
 
 We also recommend visiting the BixBench repository where we share a full evaluation harness for the agent.
-
-## Customizing the Agent
-
-See the tutorial or edit the configuration file (e.g., `src/fhda/scripts/runner.yaml`) to modify:
-
-- Model configurations
-- System prompts
-- Analysis parameters
-- Output paths
-- Runtime behavior
 
 ## Hosted Agent
 Coming soon!
