@@ -1,0 +1,10 @@
+expt: expts.server.CapsuleDatasetServer
+  
+port: 8042
+
+dataset:
+  prompt_template_key: v1.3.2
+  local_repo_path: LOCAL_PATH_TO_DATASET
+  capsule_mode: open
+  avoid_images: true
+  local_output_path: LOCAL_PATH_TO_OUTPUT_TRAJECTORIES

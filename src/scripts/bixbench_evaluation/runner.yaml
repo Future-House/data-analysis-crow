@@ -1,0 +1,31 @@
+expt: expts.eval.NBEvalExpt
+
+output_repo:
+  name: ludo/data-analysis/capsules/rollout1
+overwrite: True
+
+env:
+  host: localhost
+  port: 8042
+  request_timeout: 600
+  split: all
+
+evaluator:
+  batch_size: 1
+  num_eval_iterations: null 
+  max_rollout_steps: 25
+  shuffle: False 
+  catch_agent_failures: True
+  catch_env_failures: True
+  clear_ctx_at_each_iter: False
+
+agent:
+  agent_type: ReActAgent
+  agent_kwargs:
+    llm_model:
+      model: gpt-4o #claude-3-5-sonnet-20241022
+      parallel_tool_calls: False 
+      num_retries: 5
+      temperature: 1.0 
+
+    hide_old_env_states: True 

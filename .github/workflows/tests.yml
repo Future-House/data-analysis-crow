@@ -57,3 +57,5 @@ jobs:
       - name: Run Test
         run: |
           python -m pytest
+        env:
+          GITHUB_ACTIONS: true
