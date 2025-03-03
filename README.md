@@ -29,7 +29,7 @@ cd data-analysis-crow
 # Install dependencies
 pip install -e .
 
-# OPTIONAL:ull the docker image with bioinformatics packages
+# OPTIONAL:pull the docker image with bioinformatics packages
 docker pull futurehouse/bixbench:aviary-notebook-env
 ```
 
@@ -79,7 +79,7 @@ BixBench tests AI agents' ability to:
 - Perform long, multi-step computational analyses
 - Interpret nuanced results in the context of a research question
 
-You can find the BixBench dataset in [Hugging Face](https://huggingface.co/datasets/futurehouse/BixBench), the paper [here](), and the blog post [here](https://futurehouse.org/blog/bixbench/).
+You can find the BixBench dataset in [Hugging Face](https://huggingface.co/datasets/futurehouse/BixBench), the paper [here](https://storage.googleapis.com/bixbench-results/BixBench.pdf), and the blog post [here](https://futurehouse.org/blog/bixbench/).
 
 ### Running BixBench Evaluations
 
