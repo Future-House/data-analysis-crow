@@ -79,7 +79,7 @@ BixBench tests AI agents' ability to:
 - Perform long, multi-step computational analyses
 - Interpret nuanced results in the context of a research question
 
-You can find the BixBench dataset in [Hugging Face](https://huggingface.co/datasets/futurehouse/BixBench), the paper [here](https://storage.googleapis.com/bixbench-results/BixBench.pdf), and the blog post [here](https://futurehouse.org/blog/bixbench/).
+You can find the BixBench dataset in [Hugging Face](https://huggingface.co/datasets/futurehouse/BixBench), the paper [here](https://arxiv.org/abs/2503.00096), and the blog post [here](https://www.futurehouse.org/research-announcements/bixbench).
 
 ### Running BixBench Evaluations
 

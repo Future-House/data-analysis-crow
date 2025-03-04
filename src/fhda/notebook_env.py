@@ -225,6 +225,12 @@ class NBEnvironment(Environment[NBEnvironmentState]):
                 then appends a new cell.
         """
         try:
+            # Sometimes the agent will try to enter a string instead of an int
+            if idx is not None:
+                try:
+                    idx = int(idx)
+                except (ValueError, TypeError):
+                    idx = None
             if idx is None or idx >= len(self.state.cells):
                 new_cell = nbformat.v4.new_code_cell(source=contents)
                 self.state.cells.append(new_cell)
