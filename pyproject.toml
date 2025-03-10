@@ -7,30 +7,31 @@ authors = [
   {email = "hello@futurehouse.org", name = "FutureHouse technical staff"}
 ]
 dependencies = [
-  "aiodocker",
-  "fhaviary[server] >= 0.18.0",
-  "ldp",
-  "pandas",
-  "numpy",
-  "matplotlib",
-  "scipy",
-  "seaborn",
-  "scikit-learn",
-  "statsmodels",
-  "aiofiles",
-  "google-auth",
-  "google-cloud-storage",
-  "google-cloud-secret-manager",
-  "crow-client >= 0.3.4",
-  "jupyter",
-  "nbconvert",
-  "notebook",
-  "nbformat"
+  "aiodocker==0.24.0",
+  "fhaviary[server]==0.18.1",
+  "fh-llm-client==0.0.11",
+  "ldp==0.23.0",
+  "pandas==2.2.3",
+  "numpy==2.2.3",
+  "matplotlib==3.10.0",
+  "scipy==1.15.2",
+  "seaborn==0.13.2",
+  "scikit-learn==1.6.1",
+  "statsmodels==0.14.4",
+  "aiofiles==24.1.0",
+  "google-auth==2.38.0",
+  "google-cloud-storage==3.0.0",
+  "google-cloud-secret-manager==2.23.0",
+  "crow-client==0.3.4",
+  "jupyter==1.1.1",
+  "nbconvert==7.16.6",
+  "notebook==7.3.2",
+  "nbformat==5.10.4"
 ]
 description = "Data analysis crow"
 name = "fhda"
 requires-python = ">=3.12"
-version = "0.0.1"
+version = "1.0.0"
 
 [project.optional-dependencies]
 dev = [
