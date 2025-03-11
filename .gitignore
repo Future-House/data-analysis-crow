@@ -129,6 +129,7 @@ venv.bak/
 .dmypy.json
 dmypy.json
 
+tutorial/tmp_results_dir
 # Pyre type checker
 .pyre/
 
