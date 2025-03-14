@@ -9,6 +9,9 @@ from crow_client.models import (
     FramePath,
     AuthType,
 )
+from crow_client.models.app import TaskQueuesConfig
+
+EVAL = True
 
 ENV_VARS = {
     "OPENAI_API_KEY": os.environ["OPENAI_API_KEY"],
@@ -16,6 +19,7 @@ ENV_VARS = {
     "USE_R": "false",
     "USE_DOCKER": "false",
     "STAGE": "DEV",
+    "EVAL": "true" if EVAL else "false",
 }
 
 CONTAINER_CONFIG = DockerContainerConfiguration(cpu="2", memory="4Gi")
@@ -29,13 +33,18 @@ CROWS_TO_DEPLOY = [
     CrowDeploymentConfig(
         requirements_path=Path("pyproject.toml"),
         path=Path("src"),
-        name="data-analysis-crow",
+        name="bixbench-crow" if EVAL else "data-analysis-crow",
         environment="src.fhda.data_analysis_env.DataAnalysisEnv",
         environment_variables=ENV_VARS,
         agent="ldp.agent.ReActAgent",
         container_config=CONTAINER_CONFIG,
         force=True,
         frame_paths=frame_paths,
+        timeout=1200,
+        task_queues_config=TaskQueuesConfig(
+            name="bixbench-crow" if EVAL else "data-analysis-crow",
+            max_running_jobs=300,
+        ),
     ),
 ]
 

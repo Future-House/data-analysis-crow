@@ -252,7 +252,7 @@ class NBEnvironment(Environment[NBEnvironmentState]):
         return json.dumps(self._list_dir(self.state.work_dir), indent=2)
 
     # allowing int so that agent doesn't try to force to float
-    def submit_answer(self, answer: str | float | int) -> str:  # noqa: PYI041
+    def submit_answer(self, answer: str) -> str:  # noqa: PYI041
         """Submit an answer to the problem.
 
         Note that this tool may only be called once and ends the episode.

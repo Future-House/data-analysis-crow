@@ -16,7 +16,7 @@ import yaml
 from pydantic import BaseModel, ConfigDict
 from pydantic_core import PydanticUndefined
 
-from .logging import configure_logs
+from .expt_logging import configure_logs
 
 logger = logging.getLogger(__name__)
 

@@ -19,3 +19,5 @@ if STAGE == "local":
     DATA_STORAGE_PATH = Path("storage")
 else:
     DATA_STORAGE_PATH = Path("/storage")
+
+EVAL = bool(os.getenv("EVAL", "false").lower() == "true")
