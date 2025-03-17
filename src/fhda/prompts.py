@@ -61,6 +61,19 @@ IMPORTANT: R vs Python vs bash
 - The first cell has already been loaded with %load_ext rpy2.ipython so you can use %%R cells from the second cell onwards
 """
 
+GENERAL_NOTEBOOK_GUIDELINES_R = """
+General Guidelines:
+- Write small to medium-sized cells for easier debugging.
+- Edit existing cells by their index number when fixing bugs, rather than creating new ones.
+- Check dataframe shapes before printing. Use head() for large dataframes.
+- Ensure each cell executes successfully before moving to the next.
+- Assume you already have the packages you need installed and only install new ones if you receive errors.
+- If you need to install packages, use mamba or conda.
+IMPORTANT: Use R cells for all analysis.
+- All cells are by default R cells.
+"""
+
+
 AVOID_IMAGES = """
 AVOID USING PLOTS/IMAGES. USE TABLES AND PRINT OUTPUTS INSTEAD AS MUCH AS POSSIBLE.
 """
