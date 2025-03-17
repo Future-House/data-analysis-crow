@@ -149,7 +149,7 @@ def encode_image_to_base64(image: str) -> str:
 
 async def nbformat_run_notebook(
     cells: Iterable[nbformat.NotebookNode], client: "AsyncKernelClient"
-) -> None:
+) -> list[str]:
     """Execute notebook cells using a kernel client and collect outputs.
 
     Args:
@@ -158,7 +158,11 @@ async def nbformat_run_notebook(
 
     Raises:
         ValueError: If there is an error executing a cell
+
+    Returns:
+        List of error messages from cells that raised an error
     """
+    error_messages = []
     try:
         logger.debug("Beginning cell execution")
         for idx, cell in enumerate(cells):
@@ -221,8 +225,11 @@ async def nbformat_run_notebook(
                                 f"Value: {content.get('evalue', 'No error message')}\n"
                                 f"Traceback: {content.get('traceback', [])}"
                             )
+                            error_messages.append(
+                                f"Cell {idx}: {content.get('evalue', '')}"
+                            )
                             logger.error(error_msg)
-                            raise ValueError(error_msg)
+                            # raise ValueError(error_msg)
                         elif (
                             msg_type == "status"
                             and content["execution_state"] == "idle"
@@ -232,6 +239,8 @@ async def nbformat_run_notebook(
     finally:
         logger.debug("Stopping kernel channels")
         client.stop_channels()
+
+    return error_messages
 
 
 async def exec_cmd(

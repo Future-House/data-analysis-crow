@@ -1,16 +1,15 @@
-import argparse
 import asyncio
 import json
 import logging
 import os
-import time
 import uuid
 from typing import Any
 import ast
+import time
 
 import datasets
 from ldp.agent import AgentConfig
-from aviary.core import MultipleChoiceEvaluation, MultipleChoiceQuestion
+from aviary.core import MultipleChoiceQuestion
 from crow_client import CrowClient
 from crow_client.models import Stage, JobRequest, RuntimeConfig
 from crow_client.models.app import AuthType
@@ -19,7 +18,8 @@ import src.fhda.prompts as prompts
 logger = logging.getLogger(__name__)
 
 JOB_NAME = "job-futurehouse-bixbench-crow-dev"
-CROW_STAGE = Stage.DEV
+CROW_STAGE = Stage.LOCAL
+API_KEY = os.environ.get("CROW_API_KEY")
 RUN_UUID = str(uuid.uuid4())
 GCS_ARTIFACT_PATH = "bixbench_data/"
 HF_REPO = "futurehouse/bixbench"
@@ -29,7 +29,17 @@ NUM_RETRIES = 3
 MAX_STEPS = 30
 AVOID_IMAGES = True
 KEEP_NOTEBOOKS = False
-POLL_INTERVAL = 60
+NUM_ITERATIONS = 1
+RUN_NAME = "baseline-3.7"
+RESULTS_FILE = f"local/bixbench_runs/{RUN_NAME}-{time.strftime('%Y%m%d-%H%M%S')}.json"
+RUNTIME_PARAMS = {
+    "model": MODEL,
+    "temperature": TEMPERATURE,
+    "num_retries": NUM_RETRIES,
+    "max_steps": MAX_STEPS,
+    "avoid_images": AVOID_IMAGES,
+    "run_name": RUN_NAME,
+}
 
 
 async def prepare_job(capsule: dict[str, Any]) -> JobRequest:
@@ -63,6 +73,7 @@ async def prepare_job(capsule: dict[str, Any]) -> JobRequest:
                 "num_retries": NUM_RETRIES,
             },
             "hide_old_env_states": True,
+            "runtime_params": RUNTIME_PARAMS,  # type: ignore
         },
     )
     job_data = JobRequest(
@@ -75,78 +86,9 @@ async def prepare_job(capsule: dict[str, Any]) -> JobRequest:
     return job_data
 
 
-async def submit_questions_and_get_answers(
-    client: CrowClient,
-    data: list[dict[str, Any]],
-    timeout: int = 3600,
-) -> dict[str, str]:
-    """
-    Submit a question to the Crow service and wait for the answer.
-
-    Args:
-        client: The CrowJobClient instance
-        questions: The MultipleChoiceQuestions to submit
-        timeout: Maximum time to wait for an answer in seconds
-
-    Returns:
-        The answer string from the agent
-    """
-    job_answers = {}
-
-    for capsule in data:
-        job_id = client.create_job(await prepare_job(capsule))
-        logger.info("Submitted job %s with question: %s", job_id, capsule["short_id"])
-        job_answers[job_id] = {
-            "capsule_id": f"{capsule['short_id']}",
-            "answer": None,
-            "notebook": None,
-            "status": None,
-            "question": capsule["questions"],
-        }
-
-    start_time = time.time()
-    is_complete = False
-    while (time.time() - start_time < timeout) and not is_complete:
-        for job_id, response in job_answers.items():
-            if not response.get("answer"):
-                job_status = client.get_job(job_id)
-                job_answers[job_id]["status"] = job_status["status"]
-                if job_status["status"].lower() == "success":
-                    frame = job_status.get("environment_frame", {})
-                    answer = frame.get("state", {}).get("state", {}).get("answer", None)
-                    if answer:
-                        job_answers[job_id]["answer"] = answer
-                    if KEEP_NOTEBOOKS:
-                        notebook = (
-                            frame.get("state", {})
-                            .get("state", {})
-                            .get("nb_state", None)
-                        )
-                        if notebook:
-                            job_answers[job_id]["notebook"] = notebook
-
-                        logger.info(
-                            "Received answer for job %s: %s...", job_id, answer[:20]
-                        )
-                elif job_status["status"].lower() == "failed":
-                    logger.error("Job %s failed.", job_id)
-        await asyncio.sleep(POLL_INTERVAL)
-        is_complete = all(j["status"] != "in progress" for j in job_answers.values())
-
-    # remove the incomplete jobs
-    for job_id, response in job_answers.items():
-        if not response["answer"]:
-            logger.error(
-                "Job %s did not complete in time. (%s seconds)", job_id, timeout
-            )
-            job_answers["job_id"]["status"] = "timeout"
-
-    return job_answers
-
-
 async def load_bixbench_data(
     open_question: bool = True,
-) -> dict[str, Any]:
+) -> list[dict[str, Any]]:
     """Load the BixBench dataset."""
     data = datasets.load_dataset(HF_REPO, split="train").to_list()
     processed_dataset = []
@@ -180,132 +122,58 @@ async def load_bixbench_data(
     return processed_dataset
 
 
-async def evaluate_dataset(
+async def submit_jobs(
     data: list[dict[str, Any]],
-    runs: int = 1,
-    api_key: str | None = None,
-    stage: Stage = CROW_STAGE,
-) -> dict[str, Any]:
+) -> list[dict[str, Any]]:
     """
-    Evaluate a BixBench dataset by submitting questions and grading responses.
+    Submit a question to the Crow service and wait for the answer.
 
     Args:
-        data: The BixBench dataset to evaluate
-        runs: The number of times to run the evaluation
-        api_key: Authentication token for the Crow service
-        stage: The deployment stage to use
+        client: The CrowJobClient instance
+        questions: The MultipleChoiceQuestions to submit
+        timeout: Maximum time to wait for an answer in seconds
 
     Returns:
-        A dictionary of evaluation metrics
+        The answer string from the agent
     """
 
-    if not api_key:
-        api_key = os.environ.get("CROW_API_KEY")
-
     client = CrowClient(
-        stage=stage,
+        stage=CROW_STAGE,
         auth_type=AuthType.API_KEY,
-        api_key=api_key,
+        api_key=API_KEY,
     )
 
-    # Lists to store results
-    all_results = []
-    all_evaluations = []
-    questions = []
-
-    answers = await submit_questions_and_get_answers(client, data)
-
-    # Save answers to a JSON file for reference
-    answers_output_path = f"bixbench_answers_{RUN_UUID}.json"
-    with open(answers_output_path, "w") as f:
-        json.dump(answers, f, indent=2)
-
-    # for question in questions:
-    #     try:
-    #         evaluation, extracted_answer = await question.grade(
-    #             answers[question.question_id]
-    #         )
-    #         all_results.append({
-    #             "question_id": question.question_id,
-    #             "question": question.question,
-    #             "ideal_answer": question.ideal_answer,
-    #             "options": question.options,
-    #             "submitted_answer": answers.get(question.question_id),
-    #             "extracted_answer": extracted_answer,
-    #             "evaluation": evaluation,
-    #         })
-    #         all_evaluations.append(evaluation)
-    #         logger.info("Question %s: %s", question.question_id, evaluation)
-    #     except Exception:
-    #         logger.exception("Error processing question %s", question.question_id)
-
-    # accuracy, precision = MultipleChoiceEvaluation.calculate_accuracy_precision(
-    #     all_evaluations
-    # )
-
-    # metrics = {
-    #     "total_questions": len(all_results),
-    #     "correct_count": sum(
-    #         1 for e in all_evaluations if e == MultipleChoiceEvaluation.CORRECT
-    #     ),
-    #     "incorrect_count": sum(
-    #         1 for e in all_evaluations if e == MultipleChoiceEvaluation.INCORRECT
-    #     ),
-    #     "unsure_count": sum(
-    #         1 for e in all_evaluations if e == MultipleChoiceEvaluation.UNSURE
-    #     ),
-    #     "accuracy": accuracy,
-    #     "precision": precision,
-    #     "results": all_results,
-    # }
-
-    # logger.info("Evaluation complete. Accuracy: %.2f, Precision: %.2f", accuracy, precision)
-
-    # return metrics
-
-
-def save_results(
-    metrics: dict[str, Any],
-    output_path: str = f"bixbench_evaluation_results_{RUN_UUID}.json",
-):
-    """Save evaluation results to a file."""
-    serializable_metrics = {k: v for k, v in metrics.items() if k != "results"}
-    serializable_metrics["results"] = []
-
-    for result in metrics["results"]:
-        serializable_result = {
-            k: str(v) if isinstance(v, (MultipleChoiceEvaluation)) else v
-            for k, v in result.items()
-        }
-        if "options" in serializable_result and isinstance(
-            serializable_result["options"], list
-        ):
-            serializable_result["options"] = [
-                str(opt) for opt in serializable_result["options"]
+    jobs = []
+    for iteration in range(1, NUM_ITERATIONS + 1):
+        for capsule in data[:1]:
+            job_request = await prepare_job(capsule)
+            job_id = client.create_job(job_request)
+            logger.info(
+                "Submitted job %s with question: %s", job_id, capsule["short_id"]
+            )
+            job_metadata = {
+                **job_request.model_dump(),
+                **capsule,
+                "job_id": job_id,
+                "iteration": iteration,
+            }
+            job_metadata["questions"] = [
+                i.model_dump() for i in job_metadata["questions"]
             ]
+            jobs.append(job_metadata)
 
-        serializable_metrics["results"].append(serializable_result)
+    return jobs
 
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(serializable_metrics, f, indent=2)
 
-    logger.info("Results saved to %s", output_path)
+async def save_results(jobs: list[dict[str, Any]], output_file: str):
+    with open(output_file, "w", encoding="utf-8") as f:
+        json.dump(jobs, f, indent=4)
 
 
 async def main():
-    parser = argparse.ArgumentParser(description="Evaluate BixBench dataset with Crow")
-    parser.add_argument(
-        "--output",
-        type=str,
-        default=f"bixbench_evaluation_results_{RUN_UUID}.json",
-        help="Output file path for results",
-    )
-    args = parser.parse_args()
-
     data = await load_bixbench_data()
-    metrics = await evaluate_dataset(data)
-
-    # save_results(metrics, args.output)
+    jobs = await submit_jobs(data)
+    await save_results(jobs, RESULTS_FILE)
 
 
 if __name__ == "__main__":

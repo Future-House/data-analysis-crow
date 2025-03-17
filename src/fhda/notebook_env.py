@@ -53,6 +53,7 @@ class NBEnvironmentState:
                 # Add initial cell with rpy2 extension load
                 nbformat.v4.new_code_cell(source="%load_ext rpy2.ipython")
             self.nb.metadata.kernelspec = self.language.make_kernelspec()
+        self.notebook_runtime_errors: list[str] = []
 
     def save_nb(self):
         """Saves the notebook to disk."""
@@ -248,7 +249,6 @@ class NBEnvironment(Environment[NBEnvironmentState]):
 
         The contents is represented as a nested JSON dictionary.
         """
-        logger.info("Listing working directory: %s", self.state.work_dir)
         return json.dumps(self._list_dir(self.state.work_dir), indent=2)
 
     # allowing int so that agent doesn't try to force to float
@@ -329,9 +329,11 @@ class NBEnvironment(Environment[NBEnvironmentState]):
         """Run notebook using local kernel."""
         client = self.state.kernel_manager.client()
         client.start_channels()
-        working_dir_files = list(self.state.work_dir.glob("**/*"))
-        logger.info(f"Files in working directory: {working_dir_files}")
-        await utils.nbformat_run_notebook(cells=self.state.cells, client=client)
+        error_messages = await utils.nbformat_run_notebook(
+            cells=self.state.cells, client=client
+        )
+        if error_messages:
+            self.state.notebook_runtime_errors.extend(error_messages)
         self.state.save_nb()
         logger.debug("Saved notebook to disk")
         self.state.reload_nb()
