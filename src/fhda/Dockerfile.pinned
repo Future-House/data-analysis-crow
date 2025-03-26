@@ -76,7 +76,14 @@ RUN mamba install -c conda-forge -c bioconda -y \
 
 
 COPY requirements.txt .
-RUN mamba install -c conda-forge --file requirements.txt -y
+# Create separate requirements files for conda and pip packages
+RUN grep -v -E "aiodocker|fhaviary|ldp|crow-client" requirements.txt > conda_requirements.txt
+
+# Install conda packages first
+RUN mamba install -c conda-forge --file conda_requirements.txt -y
+
+# Install pip packages
+RUN pip install aiodocker ldp==0.23.0 fhaviary[server]==0.18.1 crow-client==0.3.6
 
 # Certain tools are not easily installable via conda. A common practice for
 # bioinformaticians is to use udocker to run certain heavy duty omics processing
