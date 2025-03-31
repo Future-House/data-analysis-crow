@@ -76,11 +76,10 @@ RUN mamba install -c conda-forge -c bioconda -y \
 
 
 COPY requirements.txt .
-# Create separate requirements files for conda and pip packages
-RUN grep -v -E "aiodocker|fhaviary|ldp|crow-client" requirements.txt > conda_requirements.txt
+COPY kernel_requirements.txt .
 
 # Install conda packages first
-RUN mamba install -c conda-forge --file conda_requirements.txt -y
+RUN mamba install -c conda-forge --file kernel_requirements.txt -y
 
 # Install pip packages
 RUN pip install aiodocker ldp==0.23.0 fhaviary[server]==0.18.1 crow-client==0.3.6
