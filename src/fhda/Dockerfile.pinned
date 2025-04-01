@@ -75,8 +75,13 @@ RUN mamba install -c conda-forge -c bioconda -y \
     bioconductor-apeglm=1.24.0
 
 
-COPY requirements.txt .
-RUN mamba install -c conda-forge --file requirements.txt -y
+COPY kernel_requirements.txt .
+
+# Install conda packages first
+RUN mamba install -c conda-forge --file kernel_requirements.txt -y
+
+# Install pip packages
+RUN pip install aiodocker ldp==0.23.0 fhaviary[server]==0.18.1 crow-client==0.3.6
 
 # Certain tools are not easily installable via conda. A common practice for
 # bioinformaticians is to use udocker to run certain heavy duty omics processing
