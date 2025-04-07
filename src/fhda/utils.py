@@ -148,7 +148,9 @@ def encode_image_to_base64(image: str) -> str:
 
 
 async def nbformat_run_notebook(
-    cells: Iterable[nbformat.NotebookNode], client: "AsyncKernelClient"
+    cells: Iterable[nbformat.NotebookNode],
+    client: "AsyncKernelClient",
+    cell_idx: int | None = None,
 ) -> list[str]:
     """Execute notebook cells using a kernel client and collect outputs.
 
@@ -163,9 +165,13 @@ async def nbformat_run_notebook(
         List of error messages from cells that raised an error
     """
     error_messages = []
+    logger.debug(f"Running notebook with cell_idx: {cell_idx}")
     try:
         logger.debug("Beginning cell execution")
         for idx, cell in enumerate(cells):
+            if cell_idx is not None and idx != cell_idx:
+                logger.debug(f"Skipping cell {idx} because cell_idx is {cell_idx}")
+                continue
             if cell.cell_type == "code":
                 logger.debug(f"Executing code cell {idx}")
                 cell.outputs = []  # Initialize empty outputs list

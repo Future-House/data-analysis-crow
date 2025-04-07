@@ -11,7 +11,7 @@ from crow_client.models import (
 )
 from crow_client.models.app import TaskQueuesConfig
 
-EVAL = True
+EVAL = False
 
 ENV_VARS = {
     "OPENAI_API_KEY": os.environ["OPENAI_API_KEY"],
@@ -33,16 +33,16 @@ CROWS_TO_DEPLOY = [
     CrowDeploymentConfig(
         requirements_path=Path("pyproject.toml"),
         path=Path("src"),
-        name="bixbench-crow" if EVAL else "data-analysis-crow",
+        name="bixbench-crow2" if EVAL else "data-analysis-crow",
         environment="src.fhda.data_analysis_env.DataAnalysisEnv",
         environment_variables=ENV_VARS,
         agent="ldp.agent.ReActAgent",
         container_config=CONTAINER_CONFIG,
         force=True,
         frame_paths=frame_paths,
-        timeout=1200,
+        timeout=3600,
         task_queues_config=TaskQueuesConfig(
-            name="bixbench-crow" if EVAL else "data-analysis-crow",
+            name="bixbench-crow2" if EVAL else "data-analysis-crow",
             max_running_jobs=300,
         ),
     ),
@@ -50,10 +50,11 @@ CROWS_TO_DEPLOY = [
 
 if __name__ == "__main__":
     client = CrowClient(
-        stage=Stage.from_string(os.environ.get("CROW_ENV", "DEV")),
+        # stage=Stage.from_string(os.environ.get("CROW_ENV", ENV_VARS["STAGE"])),
+        stage=Stage.from_string(os.environ.get("CROW_ENV", "LOCAL")),
         organization="FutureHouse",
         auth_type=AuthType.API_KEY,
-        api_key=os.environ["CROW_API_KEY"],
+        api_key=os.environ[f"CROW_API_KEY_{ENV_VARS['STAGE']}"],
     )
     for crow in CROWS_TO_DEPLOY:
         try:

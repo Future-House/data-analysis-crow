@@ -21,3 +21,5 @@ else:
     DATA_STORAGE_PATH = Path("/storage")
 
 EVAL = bool(os.getenv("EVAL", "false").lower() == "true")
+
+VALID_FROM_TASK_KWARGS = ["run_notebook_on_edit"]
