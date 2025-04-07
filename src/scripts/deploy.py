@@ -18,8 +18,7 @@ ENV_VARS = {
     "ANTHROPIC_API_KEY": os.environ["ANTHROPIC_API_KEY"],
     "USE_R": "false",
     "USE_DOCKER": "false",
-    "STAGE": "DEV",
-    "EVAL": "true" if EVAL else "false",
+    "STAGE": "PROD",
 }
 
 CONTAINER_CONFIG = DockerContainerConfiguration(cpu="2", memory="4Gi")
@@ -33,7 +32,7 @@ CROWS_TO_DEPLOY = [
     CrowDeploymentConfig(
         requirements_path=Path("pyproject.toml"),
         path=Path("src"),
-        name="bixbench-crow2" if EVAL else "data-analysis-crow",
+        name="data-analysis-crow",
         environment="src.fhda.data_analysis_env.DataAnalysisEnv",
         environment_variables=ENV_VARS,
         agent="ldp.agent.ReActAgent",
@@ -42,7 +41,7 @@ CROWS_TO_DEPLOY = [
         frame_paths=frame_paths,
         timeout=3600,
         task_queues_config=TaskQueuesConfig(
-            name="bixbench-crow2" if EVAL else "data-analysis-crow",
+            name="data-analysis-crow",
             max_running_jobs=300,
         ),
     ),
