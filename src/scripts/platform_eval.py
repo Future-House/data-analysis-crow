@@ -1,185 +1,371 @@
+import time
+import os
 import asyncio
 import json
-import logging
-import os
-import uuid
-from typing import Any
 import ast
-import time
-
-import datasets
-from ldp.agent import AgentConfig
-from aviary.core import MultipleChoiceQuestion
+from typing import Any, Dict, List, Optional, Tuple, Union
+import pandas as pd
+import logging
+from pathlib import Path
 from crow_client import CrowClient
-from crow_client.models import Stage, JobRequest, RuntimeConfig
-from crow_client.models.app import AuthType
-import src.fhda.prompts as prompts
+from crow_client.models import (
+    AuthType,
+    Stage,
+)
+from aviary.utils import MultipleChoiceQuestion, eval_answer, EvalAnswerMode
 
+
+# Configure logging
 logger = logging.getLogger(__name__)
 
-JOB_NAME = "job-futurehouse-bixbench-crow-dev"
-CROW_STAGE = Stage.LOCAL
-API_KEY = os.environ.get("CROW_API_KEY")
-RUN_UUID = str(uuid.uuid4())
-GCS_ARTIFACT_PATH = "bixbench_data/"
-HF_REPO = "futurehouse/bixbench"
-MODEL = "claude-3-7-sonnet-20250219"
-TEMPERATURE = 1
-NUM_RETRIES = 3
-MAX_STEPS = 30
-AVOID_IMAGES = True
-KEEP_NOTEBOOKS = False
-NUM_ITERATIONS = 1
-RUN_NAME = "baseline-3.7"
-RESULTS_FILE = f"local/bixbench_runs/{RUN_NAME}-{time.strftime('%Y%m%d-%H%M%S')}.json"
-RUNTIME_PARAMS = {
-    "model": MODEL,
-    "temperature": TEMPERATURE,
-    "num_retries": NUM_RETRIES,
-    "max_steps": MAX_STEPS,
-    "avoid_images": AVOID_IMAGES,
-    "run_name": RUN_NAME,
-}
 
-
-async def prepare_job(capsule: dict[str, Any]) -> JobRequest:
-    """
-    Prepare a job for a capsule.
-    """
-
-    formatted_question = "\n-------\n".join(
-        [i.question_prompt for i in capsule["questions"]]
+def setup_logging(log_level: int = logging.INFO) -> None:
+    """Configure logging"""
+    logging.basicConfig(
+        level=log_level,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[
+            logging.StreamHandler(),
+        ],
     )
 
-    task = f"""\
-            Here is the user query to address:
 
-            <query>
-            {formatted_question}
-            </query>
-
-            {prompts.CHAIN_OF_THOUGHT_AGNOSTIC}
-            {prompts.SUBMIT_ANSWER_OPEN}
-            {prompts.GENERAL_NOTEBOOK_GUIDELINES}"""
-
-    if AVOID_IMAGES:
-        task += prompts.AVOID_IMAGES
-    agent = AgentConfig(
-        agent_type="ReActAgent",
-        agent_kwargs={
-            "llm_model": {
-                "model": MODEL,
-                "temperature": TEMPERATURE,
-                "num_retries": NUM_RETRIES,
-            },
-            "hide_old_env_states": True,
-            "runtime_params": RUNTIME_PARAMS,  # type: ignore
-        },
+def create_client(
+    api_key: Optional[str] = None,
+    stage: Stage = Stage.DEV,
+    organization: str = "FutureHouse",
+) -> CrowClient:
+    """Create and return a CrowClient instance."""
+    return CrowClient(
+        stage=stage,
+        organization=organization,
+        auth_type=AuthType.API_KEY,
+        api_key=api_key or os.environ["CROW_API_KEY"],
     )
-    job_data = JobRequest(
-        name=JOB_NAME,
-        query=task,
-        runtime_config=RuntimeConfig(
-            agent=agent, max_steps=MAX_STEPS, upload_id=capsule["data_folder"]
-        ),
-    )
-    return job_data
 
 
-async def load_bixbench_data(
-    open_question: bool = True,
-) -> list[dict[str, Any]]:
-    """Load the BixBench dataset."""
-    data = datasets.load_dataset(HF_REPO, split="train").to_list()
-    processed_dataset = []
-    for capsule in data:
-        raw_questions = ast.literal_eval(capsule["questions"])
-        processed_questions = [
-            MultipleChoiceQuestion(
-                question=i["question"],
-                options=[
-                    i["ideal_answer"],
-                    i["distractor_1"],
-                    i["distractor_2"],
-                    i["distractor_3"],
-                ],
-                ideal_answer=i["ideal_answer"],
-                shuffle_seed=MultipleChoiceQuestion.SEED_USING_QUESTION,
-                prompt_without_options=open_question,
-                question_id=i["id"],
-            )
-            for i in raw_questions
-        ]
-        processed_dataset.append(
-            {
-                "data_folder": GCS_ARTIFACT_PATH
-                + capsule["data_folder"].replace(".zip", ""),
-                "short_id": capsule["short_id"],
-                "uuid": capsule["uuid"],
-                "questions": processed_questions,
-            }
-        )
-    return processed_dataset
-
-
-async def submit_jobs(
-    data: list[dict[str, Any]],
-) -> list[dict[str, Any]]:
-    """
-    Submit a question to the Crow service and wait for the answer.
+def load_job_data(file_path: Union[str, Path]) -> List[Dict[str, Any]]:
+    """Load Job data from a JSON file.
 
     Args:
-        client: The CrowJobClient instance
-        questions: The MultipleChoiceQuestions to submit
-        timeout: Maximum time to wait for an answer in seconds
+        file_path: Path to the JSON file
 
     Returns:
-        The answer string from the agent
+        List of job data records
+    """
+    file_path = Path(file_path)
+    with open(file_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    logger.info("Loaded %s records from %s", len(data), file_path.name)
+    if data:
+        logger.info("First record job_id: %s", data[0]["job_id"])
+
+    return data
+
+
+async def fetch_jobs_batch(
+    client: CrowClient, job_ids: List[str], batch_size: int = 10
+) -> List[Dict[str, Any]]:
+    """Fetch jobs in batches to avoid memory issues.
+
+    Args:
+        client: CrowClient instance
+        job_ids: List of job IDs to fetch
+        batch_size: Number of jobs to fetch in each batch
+
+    Returns:
+        List of fetched jobs
     """
 
-    client = CrowClient(
-        stage=CROW_STAGE,
-        auth_type=AuthType.API_KEY,
-        api_key=API_KEY,
+    async def get_job_async(job_id: str) -> Dict[str, Any]:
+        return await asyncio.to_thread(client.get_job, job_id)
+
+    results = []
+
+    for i in range(0, len(job_ids), batch_size):
+        batch = job_ids[i : i + batch_size]
+        batch_num = i // batch_size + 1
+        total_batches = (len(job_ids) + batch_size - 1) // batch_size
+        logger.info(
+            "Processing batch %s/%s: %s jobs", batch_num, total_batches, len(batch)
+        )
+
+        tasks = [asyncio.create_task(get_job_async(job_id)) for job_id in batch]
+        batch_results = await asyncio.gather(*tasks)
+        results.extend(batch_results)
+
+        if i + batch_size < len(job_ids):
+            await asyncio.sleep(0.5)
+
+    return results
+
+
+def merge_data(
+    bixbench_data: List[Dict[str, Any]], fetched_jobs: List[Dict[str, Any]]
+) -> pd.DataFrame:
+    """Merge BixBench data with fetched jobs.
+
+    Args:
+        bixbench_data: Original BixBench data
+        fetched_jobs: Fetched job trajectories
+
+    Returns:
+        Merged DataFrame
+    """
+    results = []
+    for capsule, trajectory in zip(bixbench_data, fetched_jobs):
+        results.append({**capsule, **trajectory})
+
+    return pd.DataFrame(results)
+
+
+def parse_questions(row: pd.Series) -> Optional[Dict[str, Any]]:
+    """Extract question details for a specific question key."""
+    idx = next(
+        (
+            i
+            for i, q in enumerate(row["questions"])
+            if q["question_id"] == row["question_keys"]
+        ),
+        None,
+    )
+    if idx is not None:
+        return row["questions"][idx]
+    else:
+        logger.warning("Index %s out of range for row %s", idx, row)
+        logger.warning("Questions length: %s", len(row["questions"]))
+        return None
+
+
+def parse_answer(row: pd.Series) -> str:
+    """Parse the answer for a specific question key."""
+    answer = row["answer"]
+    try:
+        if isinstance(answer, dict):
+            return answer[row["question_keys"]]
+        else:
+            return answer
+    except Exception:
+        return "No answer"
+
+
+def fetch_answer(frame: Dict[str, Any]) -> Any:
+    """Extract answer from environment frame."""
+    try:
+        return ast.literal_eval(frame["state"]["state"]["answer"])
+    except Exception:
+        return "No answer"
+
+
+def prepare_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+    """Prepare the DataFrame for evaluation.
+
+    Args:
+        df: Input DataFrame
+
+    Returns:
+        Processed DataFrame ready for evaluation
+    """
+    df["answer"] = df["environment_frame"].apply(fetch_answer)
+    df["question_keys"] = df["questions"].apply(lambda x: [i["question_id"] for i in x])
+    exploded = df.explode("question_keys")
+    exploded["answer"] = exploded.apply(parse_answer, axis=1)
+    exploded["question"] = exploded.apply(parse_questions, axis=1)
+    exploded["question"] = exploded["question"].apply(
+        lambda x: MultipleChoiceQuestion.model_validate(x)  # type: ignore
     )
 
-    jobs = []
-    for iteration in range(1, NUM_ITERATIONS + 1):
-        for capsule in data[:1]:
-            job_request = await prepare_job(capsule)
-            job_id = client.create_job(job_request)
-            logger.info(
-                "Submitted job %s with question: %s", job_id, capsule["short_id"]
-            )
-            job_metadata = {
-                **job_request.model_dump(),
-                **capsule,
-                "job_id": job_id,
-                "iteration": iteration,
-            }
-            job_metadata["questions"] = [
-                i.model_dump() for i in job_metadata["questions"]
-            ]
-            jobs.append(job_metadata)
-
-    return jobs
+    return exploded
 
 
-async def save_results(jobs: list[dict[str, Any]], output_file: str):
-    with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(jobs, f, indent=4)
+async def grade_single(row: pd.Series) -> float:
+    """Grade a single answer."""
+    grade_result = await eval_answer(
+        row["answer"],
+        row["question"].ideal_answer,
+        row["question"].question_prompt,
+        EvalAnswerMode.LLM,
+    )
+    return grade_result
 
 
-async def main():
-    data = await load_bixbench_data()
-    jobs = await submit_jobs(data)
-    await save_results(jobs, RESULTS_FILE)
+async def grade_all_questions_concurrent(exploded: pd.DataFrame) -> pd.DataFrame:
+    """Grade all questions concurrently.
+
+    Args:
+        exploded: DataFrame with questions to grade
+
+    Returns:
+        DataFrame with grading results
+    """
+    tasks = [asyncio.create_task(grade_single(row)) for _, row in exploded.iterrows()]
+    results = await asyncio.gather(*tasks)
+
+    result_df = exploded.copy()
+    result_df["grade_result"] = results
+    return result_df
+
+
+def print_results(graded_df: pd.DataFrame) -> Dict[str, Union[int, float]]:
+    """Print evaluation results."""
+    success_count = (graded_df["status"] == "success").sum()
+    total_count = len(graded_df)
+    success_percentage = success_count / total_count if total_count > 0 else 0
+
+    logger.info(
+        "Success count: %s out of %s (%.2f%%)",
+        success_count,
+        total_count,
+        success_percentage * 100,
+    )
+    logger.info("Average accuracy: %.2f", graded_df["grade_result"].mean())
+
+    return {
+        "success_count": success_count,
+        "total_count": total_count,
+        "success_percentage": success_percentage,
+        "average_accuracy": graded_df["grade_result"].mean(),
+    }
+
+
+def save_results(graded_df: pd.DataFrame, output_path: Union[str, Path]) -> None:
+    """Save graded results to a file.
+
+    Args:
+        graded_df: DataFrame with grading results
+        output_path: Path to save the results
+    """
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    graded_df.to_csv(output_path, index=False)
+    logger.info("Results saved to %s", output_path)
+
+
+async def main(
+    job_file_path: Union[str, Path],
+    output_path: Union[str, Path],
+    job_request_batch_size: int = 10,
+    api_key: Optional[str] = None,
+    stage: Stage = Stage.DEV,
+    organization: str = "FutureHouse",
+    log_level: int = logging.INFO,
+) -> Tuple[pd.DataFrame, Dict[str, Union[int, float]]]:
+    """Main function to run the evaluation pipeline.
+
+    Args:
+        job_file_path: Path to Job data file with all the job IDs
+        output_path: Path to save results
+        job_request_batch_size: Batch size for job requests
+        api_key: API key for CrowClient
+        stage: Stage for CrowClient
+        organization: Organization for CrowClient
+        log_level: Logging level
+
+    Returns:
+        Tuple containing the graded DataFrame and evaluation results summary
+    """
+    # Setup logging
+    setup_logging(log_level)
+
+    # Start timing
+    start_time = time.time()
+
+    logger.info("Starting evaluation with job file: %s", job_file_path)
+    logger.info("Results will be saved to: %s", output_path)
+
+    # Create client
+    client = create_client(api_key, stage, organization)
+
+    # Load data
+    job_data = load_job_data(job_file_path)
+
+    # Get job IDs
+    job_ids = [i["job_id"] for i in job_data]
+    logger.info("Processing %s job IDs", len(job_ids))
+
+    # Fetch jobs
+    fetched_jobs = await fetch_jobs_batch(client, job_ids, job_request_batch_size)
+
+    # Merge data
+    df = merge_data(job_data, fetched_jobs)
+    logger.info("Created DataFrame with %s rows", len(df))
+
+    # Prepare DataFrame
+    exploded = prepare_dataframe(df)
+    logger.info("Exploded DataFrame has %s rows", len(exploded))
+
+    # Grade questions
+    logger.info("Starting grading process...")
+    graded_df = await grade_all_questions_concurrent(exploded)
+    logger.info("Grading completed")
+
+    # Print results
+    results = print_results(graded_df)
+
+    # Save results
+    save_results(graded_df, output_path)
+
+    # Calculate and log elapsed time
+    elapsed_time = time.time() - start_time
+    logger.info(
+        "Evaluation completed successfully in %.2f seconds (%.2f minutes)",
+        elapsed_time,
+        elapsed_time / 60,
+    )
+
+    return graded_df, results
 
 
 if __name__ == "__main__":
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        handlers=[logging.StreamHandler()],
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Evaluate BixBench data")
+    parser.add_argument(
+        "--job-file-path",
+        type=str,
+        default="local/bixbench_runs/baseline-3.7-single-cell-run2-20250325-065452.json",
+        help="Path to Job data file with all the job IDs",
     )
-    asyncio.run(main())
+    parser.add_argument(
+        "--output-path",
+        type=str,
+        default="local/bixbench_runs/",
+        help="Path to save evaluation results",
+    )
+    parser.add_argument(
+        "--batch-size", type=int, default=50, help="Batch size for job requests"
+    )
+    parser.add_argument(
+        "--api-key",
+        type=str,
+        default=None,
+        help="API key for CrowClient (defaults to CROW_API_KEY env var)",
+    )
+    parser.add_argument(
+        "--log-level",
+        type=str,
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Logging level",
+    )
+
+    args = parser.parse_args()
+
+    # Convert string log level to actual logging level
+    log_level = getattr(logging, args.log_level)
+
+    job_file_path = Path(args.job_file_path)
+    output_path = Path(args.output_path)
+    output_path = output_path / f"{job_file_path.name.replace('.json', '')}-eval.csv"
+
+    asyncio.run(
+        main(
+            job_file_path,
+            output_path,
+            args.batch_size,
+            args.api_key,
+            log_level=log_level,
+        )
+    )

@@ -125,6 +125,7 @@ class NBEnvironment(Environment[NBEnvironmentState]):
         use_tmp_work_dir: bool = True,
         language: utils.NBLanguage = utils.NBLanguage.PYTHON,
         allow_download_from_gcs: bool = False,
+        run_notebook_on_edit: bool = False,
     ):
         """Initialize a notebook environment.
 
@@ -139,6 +140,8 @@ class NBEnvironment(Environment[NBEnvironmentState]):
             allow_download_from_gcs: If True, the environment will expose a tool to download
                 directories from the aviary-storage GCS bucket. Should only be enabled if the
                 task requires data on GCS. Disabled by default.
+            run_notebook_on_edit: If True (default), the whole notebook will be rerun
+                after each edit. If False, only a the cell that was edited will be rerun.
         """
         self.work_dir = Path(work_dir)
         self.nb_path = Path(nb_path) if nb_path else self.work_dir / self.NOTEBOOK_NAME
@@ -147,6 +150,7 @@ class NBEnvironment(Environment[NBEnvironmentState]):
         self.language = language
         self.allow_download_from_gcs = allow_download_from_gcs
         self.use_docker = cfg.USE_DOCKER
+        self.run_notebook_on_edit = run_notebook_on_edit
 
     async def reset(self) -> tuple[Messages, list[Tool]]:
         nb_path, work_dir = self._set_work_dir()
@@ -218,7 +222,7 @@ class NBEnvironment(Environment[NBEnvironmentState]):
 
         ONLY CODE CELLS ARE SUPPORTED. Do no attempt to write Markdown or raw text,
         though you are permitted (and encouraged) to write comments in the code cells.
-        The notebook will be automatically rerun if a successful edit is made.
+        The cell will be automatically rerun if a successful edit is made.
 
         Args:
             contents: Cell contents to insert. We assume the cell is a code block.
@@ -242,7 +246,12 @@ class NBEnvironment(Environment[NBEnvironmentState]):
             return f"Edited cell #{idx}."
         finally:
             self.state.save_nb()
-            await self.run_notebook()
+            if self.run_notebook_on_edit:
+                args = {}
+            else:
+                idx = len(self.state.cells) - 1 if idx is None else idx
+                args = {"cell_idx": idx}
+            await self.run_notebook(**args)
 
     def list_workdir(self) -> str:
         """Recursively lists the contents of the working directory.
@@ -283,12 +292,14 @@ class NBEnvironment(Environment[NBEnvironmentState]):
                 cast(list, index["files"]).append(item.name)
         return index
 
-    async def run_notebook(self) -> str:
+    async def run_notebook(self, cell_idx: int | None = None) -> str:
         """Run the entire notebook sequentially."""
         logger.debug("Starting notebook execution")
         if self.use_docker:
+            if cell_idx is not None:
+                raise ValueError("Cell index not supported for Docker")
             return await self._run_notebook_docker()
-        return await self._run_notebook_local()
+        return await self._run_notebook_local(cell_idx=cell_idx)
 
     async def _run_notebook_docker(self) -> str:
         """Run notebook using Docker container."""
@@ -325,12 +336,12 @@ class NBEnvironment(Environment[NBEnvironmentState]):
         self.state.reload_nb()
         return "Executed all cells."
 
-    async def _run_notebook_local(self) -> str:
+    async def _run_notebook_local(self, cell_idx: int | None = None) -> str:
         """Run notebook using local kernel."""
         client = self.state.kernel_manager.client()
         client.start_channels()
         error_messages = await utils.nbformat_run_notebook(
-            cells=self.state.cells, client=client
+            cells=self.state.cells, client=client, cell_idx=cell_idx
         )
         if error_messages:
             self.state.notebook_runtime_errors.extend(error_messages)

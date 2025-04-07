@@ -1,6 +1,7 @@
 import hashlib
 import logging
 import shutil
+import json
 from typing import Any, cast
 import time
 from aviary.core import (
@@ -80,8 +81,29 @@ class DataAnalysisEnv(NBEnvironment):
         logger.info("Answer: %s", answer)
         return answer
 
+    def export_frame(self) -> Frame:
+        return Frame(
+            state={
+                "last_action": self.state.actions[-1],
+                "answer": self.state.answer,
+                "done": self.state.done,
+                "total_reward": self.state.total_reward,
+                "nb_state": self.state.nb,
+                "nb_state_html": nb_to_html(self.state.nb),
+                "nb_runtime_errors": self.state.notebook_runtime_errors,
+            },
+            info={
+                "eval_mode": self.eval_mode,
+                "language": self.state.language,
+                "problem": self.problem,
+                "problem_id": self.problem_id,
+            },
+        )
+
     @classmethod
-    def eval_from_task(cls, task: str, gcs_artifact_path: str) -> "DataAnalysisEnv":
+    def eval_from_task(
+        cls, task: str, gcs_artifact_path: str, environment_config: str | None = None
+    ) -> "DataAnalysisEnv":
         """
         Used for evaluations via crow jobs.
 
@@ -90,7 +112,6 @@ class DataAnalysisEnv(NBEnvironment):
             gcs_artifact_path: The path to the GCS artifact – required for evaluation on crow jobs
         """
         logger.info("Using the eval_from_task method")
-
         # Create temporary directory in GCP mounted storage volume
         task_hash = hashlib.sha256(task.encode()).hexdigest()
         trajectory_path = cfg.DATA_STORAGE_PATH / f"{task_hash}-{time.time()}"
@@ -124,45 +145,44 @@ class DataAnalysisEnv(NBEnvironment):
 
     @classmethod
     def from_task(
-        cls, task: str, gcs_artifact_path: str | None = None
+        cls,
+        task: str,
+        gcs_artifact_path: str | None = None,
+        environment_config: str | None = None,
     ) -> "DataAnalysisEnv":
         """
         Perform data analysis on a user query.
 
         Args:
-            task: The user query structured as <data_path> | <query>
-
-        eg "CaspuleFolder-a7812fg | How many genes are differentially expressed between the two conditions?"
+            task: The user query
+            gcs_artifact_path: The path to the GCS artifact – required for evaluation on crow jobs
+            environment_config: A JSON string of environment configuration
         """
         logger.info("User task: %s", task)
         logger.info("GCS artifact path: %s", gcs_artifact_path)
+        logger.info("environment_config: %s", environment_config)
         if cfg.EVAL:
             return cls.eval_from_task(task, gcs_artifact_path)  # type: ignore
 
         if (
-            gcs_artifact_path
+            not gcs_artifact_path
         ):  # The files are already in the GCS bucket in a job-specific directory
-            trajectory_path = cfg.DATA_STORAGE_PATH / gcs_artifact_path
-            nb_path = trajectory_path / NBEnvironment.NOTEBOOK_NAME
-            query = task
-            task_hash = gcs_artifact_path
+            raise NotImplementedError(
+                "Running crow jobs without gcs_artifact_path is not supported"
+            )
+        trajectory_path = cfg.DATA_STORAGE_PATH / gcs_artifact_path
+        nb_path = trajectory_path / NBEnvironment.NOTEBOOK_NAME
+        query = task
+        task_hash = gcs_artifact_path
+        if environment_config:
+            kwargs = {
+                k: v
+                for k, v in json.loads(environment_config).items()
+                if k in cfg.VALID_FROM_TASK_KWARGS
+            }
         else:
-            # Extract data path and query from task
-            data_path, query = task.split("|")
-            # Hash the task to get a unique identifier
-            task_hash = hashlib.sha256(task.encode()).hexdigest()
-            # Create temporary directory in GCP mounted storage volume
-            trajectory_path = cfg.DATA_STORAGE_PATH / f"{task_hash}-{time.time()}"
-            trajectory_path.mkdir(parents=True, exist_ok=True)
-            nb_path = trajectory_path / NBEnvironment.NOTEBOOK_NAME
-            # Copy task data to trajectory path
-            for item in (cfg.DATA_STORAGE_PATH / data_path).iterdir():
-                if item.is_file():
-                    shutil.copy2(item, trajectory_path)
-                elif item.is_dir():
-                    shutil.copytree(
-                        item, trajectory_path / item.name, dirs_exist_ok=True
-                    )
+            kwargs = {}
+        logger.info("Filtered kwargs: %s", kwargs)
 
         # Augment incoming task with CoT instructions
         augmented_task = f"""\
@@ -215,23 +235,5 @@ Here is the user query to address:
             language=language,
             system_prompt=prompts.CAPSULE_SYSTEM_PROMPT_QUERY,
             use_tmp_work_dir=False,
-        )
-
-    def export_frame(self) -> Frame:
-        return Frame(
-            state={
-                "last_action": self.state.actions[-1],
-                "answer": self.state.answer,
-                "done": self.state.done,
-                "total_reward": self.state.total_reward,
-                "nb_state": self.state.nb,
-                "nb_state_html": nb_to_html(self.state.nb),
-                "nb_runtime_errors": self.state.notebook_runtime_errors,
-            },
-            info={
-                "eval_mode": self.eval_mode,
-                "language": self.state.language,
-                "problem": self.problem,
-                "problem_id": self.problem_id,
-            },
+            **kwargs,
         )
