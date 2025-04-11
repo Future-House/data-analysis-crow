@@ -9,7 +9,7 @@ authors = [
 dependencies = [
   "aiodocker==0.24.0",
   "fhaviary[server]==0.18.1",
-  "fh-llm-client==0.0.11",
+  "fhlmi==0.26.0",
   "ldp==0.23.0",
   "pandas==2.2.3",
   "numpy==2.2.3",
@@ -22,11 +22,12 @@ dependencies = [
   "google-auth==2.38.0",
   "google-cloud-storage==3.0.0",
   "google-cloud-secret-manager==2.23.0",
-  "crow-client>=0.3.13",
+  "crow-client>=0.3.14",
   "jupyter==1.1.1",
   "nbconvert==7.16.6",
   "notebook==7.3.2",
-  "nbformat==5.10.4"
+  "nbformat==5.10.4",
+  "pydeseq2==0.5.0"
 ]
 description = "Data analysis crow"
 name = "fhda"
@@ -49,7 +50,7 @@ dev = [
 run_expt = 'scripts.configurable:_run_expt'
 
 [tool.setuptools]
-package-dir = {"" = "src"}
+package-dir = {"" = "fhda"}
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["fhda"]

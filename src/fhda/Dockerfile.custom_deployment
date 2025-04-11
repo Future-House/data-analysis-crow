@@ -1,0 +1,184 @@
+# syntax=docker/dockerfile:1.4
+FROM python:3.12-slim AS base
+
+WORKDIR /app
+ENV PYTHONUNBUFFERED=1
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN --mount=type=cache,target=/var/cache/apt \
+    apt-get update -qq && \
+    apt-get install -yq --no-install-recommends \
+    git \
+    openssh-client \
+    wget \
+    gpg \
+    software-properties-common \
+    build-essential && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh && \
+    chmod +x ~/miniconda.sh && \
+    bash ~/miniconda.sh -b -p /app/miniconda && \
+    rm ~/miniconda.sh && \
+    /app/miniconda/bin/conda init bash
+
+# Set environment variables to point to conda environment
+ENV VIRTUAL_ENV="/app/miniconda/bin"
+ENV PATH="/app/miniconda/bin:$PATH"
+ENV PYTHONPATH="/app/miniconda/lib/python3.12/site-packages:${PYTHONPATH:-}"
+
+# Install uv & mamba
+RUN pip3 install --no-cache-dir uv==0.5.21
+RUN conda install -c conda-forge mamba -y
+
+
+# Install R and kernels in the crow_env environment
+RUN mamba install -c conda-forge -y \
+    r-base=4.3.3 \
+    r-recommended=4.3 \
+    r-irkernel=1.3.2 \
+    r-factominer=2.11 \
+    r-rcolorbrewer=1.1_3 \
+    r-devtools=2.4.5 \
+    r-broom=1.0.7 \
+    r-data.table=1.15.4 \
+    r-enrichr=3.2 \
+    r-factoextra=1.0.7 \
+    r-ggnewscale=0.5.0 \
+    r-ggrepel=0.9.6 \
+    r-ggpubr=0.6.0 \
+    r-ggvenn=0.1.10 \
+    r-janitor=2.2.1 \
+    r-multcomp=1.4_26 \
+    r-matrix=1.6_5 \
+    r-pheatmap=1.0.12 \
+    r-tidyverse=2.0.0 \
+    r-readxl=1.4.3 \
+    r-reshape=0.8.9 \
+    r-rstatix=0.7.2 \
+    r-viridis=0.6.5 \
+    udocker=1.3.17 \
+    imbalanced-learn=0.13.0 \
+    ipykernel=6.29.5 \
+    sqlite=3.47.2 \
+    anndata=0.11.1 \
+    biopython=1.84 \
+    datasets \
+    ete3=3.1.3 \
+    keras=3.7.0 \
+    jupyter=1.0.0 \
+    matplotlib=3.10.0 \
+    matplotlib-venn=1.1.1 \
+    nbconvert=7.16.4 \
+    numpy=2.0.2 \
+    optuna=4.1.0 \
+    openpyxl=3.1.5 \
+    pandas=2.2.3 \
+    plotly=5.24.1 \
+    rpy2=3.5.11 \
+    scipy=1.14.1 \
+    scanpy=1.10.4 \
+    seaborn=0.13.2 \
+    scikit-learn=1.6.0 \
+    statsmodels=0.14.4 \
+    umap-learn=0.5.7
+
+RUN python -m ipykernel install --user --name python3 --display-name "Python 3 (ipykernel)"
+RUN R -e 'IRkernel::installspec(name = "R", displayname = "R (4.3.3)")'
+
+RUN mamba install -c conda-forge -c bioconda -y \
+    biokit=0.5.0 \
+    gseapy=1.1.4 \
+    blast=2.16.0 \
+    clipkit=2.3.0 \
+    fastqc=0.12.1 \
+    iqtree=2.3.6 \
+    mafft=7.526 \
+    metaeuk=7.bba0d80 \
+    mygene=3.2.2 \
+    perl=5.32.1 \
+    phykit=2.0.1 \
+    pydeseq2=0.4.12 \
+    spades=4.0.0 \
+    trim-galore=0.6.10 \
+    bioconductor-enhancedvolcano=1.20.0 \
+    bioconductor-deseq2=1.42.0 \
+    bioconductor-clusterprofiler=4.10.0 \
+    bioconductor-org.hs.eg.db=3.18.0 \
+    bioconductor-genomicranges=1.54.1 \
+    bioconductor-summarizedexperiment=1.32.0 \
+    bioconductor-apeglm=1.24.0
+
+ENV UV_COMPILE_BYTECODE=1
+ENV UV_LINK_MODE=copy
+
+FROM base AS builder
+
+ARG MODULE_NAME
+ARG USE_INTERNAL_DEPS
+ARG USE_GIT_CROW_CLIENT
+
+
+RUN mkdir -p ~/.ssh && \
+    chmod 700 ~/.ssh && \
+    ssh-keyscan github.com >> ~/.ssh/known_hosts && \
+    printf "Host github.com\n    IdentityFile /root/.ssh/pqa_id_ed25519\n    IdentityFile /root/.ssh/aviary_id_ed25519\nHost gitlab.company.com\n    IdentityFile /root/.ssh/pqa_id_ed25519\n" > ~/.ssh/config
+
+RUN --mount=type=cache,target=/var/cache/apt \
+    apt-get update -qq && \
+    apt-get install -yq --no-install-recommends \
+    build-essential && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+ENV VIRTUAL_ENV="/app/miniconda/bin"
+ENV PATH="/app/miniconda/bin:$PATH"
+
+COPY ./${MODULE_NAME} /app/${MODULE_NAME}
+
+RUN mkdir -p /app/scripts
+COPY ./scripts/run_crow_job.py /app/scripts/
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=ssh \
+    --mount=type=secret,id=ssh_key,target=/root/.ssh/aviary_id_ed25519.tmp \
+    if [ "$USE_INTERNAL_DEPS" = "true" ]; then \
+        cp /root/.ssh/aviary_id_ed25519.tmp /root/.ssh/aviary_id_ed25519 && \
+        chmod 400 /root/.ssh/aviary_id_ed25519 && \
+        git clone git@github.com:Future-House/aviary-internal.git /app/aviary_internal && \
+        cd /app/aviary_internal/aviary_internal && \
+        uv pip install --system -e .; \
+    else \
+        echo 'Skipping aviary_internal install'; \
+    fi && \
+    if [ "$USE_GIT_CROW_CLIENT" = "true" ]; then \
+        git clone git@github.com:Future-House/crow-ecosystem.git /app/crow-ecosystem && \
+        cd /app/crow-ecosystem/packages/crow-client && \
+        uv pip install --system -e .; \
+    else \
+        uv pip install --system crow-client; \
+    fi
+
+WORKDIR /app/${MODULE_NAME}
+RUN --mount=type=ssh \
+    --mount=type=secret,id=pqa_ssh_key,target=/root/.ssh/pqa_id_ed25519.tmp \
+    cp /root/.ssh/pqa_id_ed25519.tmp /root/.ssh/pqa_id_ed25519 && \
+    chmod 400 /root/.ssh/pqa_id_ed25519 && \
+    if [ -f "pyproject.toml" ]; then \
+        uv pip install --system -e .; \
+    elif [ -f "requirements.txt" ]; then \
+        uv pip install --system -r requirements.txt; \
+    else \
+        echo "No pyproject.toml or requirements.txt found" && exit 1; \
+    fi
+
+RUN find /app -type l -delete && \
+    rm -rf /app/.git
+
+FROM base AS runtime
+
+COPY --from=builder /app/ /app/
+
+ENV VIRTUAL_ENV="/app/miniconda/bin"
+ENV PATH="/app/miniconda/bin:$PATH"
+ENV PYTHONPATH="/app/miniconda/lib/python3.12/site-packages:${PYTHONPATH:-}"
+CMD ["python", "scripts/run_crow_job.py"]
