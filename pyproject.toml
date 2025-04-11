@@ -50,7 +50,7 @@ dev = [
 run_expt = 'scripts.configurable:_run_expt'
 
 [tool.setuptools]
-package-dir = {"" = "fhda"}
+package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
-where = ["fhda"]
+where = ["src"]
