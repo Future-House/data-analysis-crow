@@ -2,7 +2,6 @@ import asyncio
 import json
 import logging
 import os
-import uuid
 from typing import Any
 import ast
 import time
@@ -17,19 +16,28 @@ import src.fhda.prompts as prompts
 
 logger = logging.getLogger(__name__)
 
-JOB_NAME = "job-futurehouse-data-analysis-crow-dev"
-CROW_STAGE = Stage.DEV
-API_KEY = os.environ.get("CROW_API_KEY")
-RUN_UUID = str(uuid.uuid4())
-GCS_ARTIFACT_PATH = "bixbench_data/"
-HF_REPO = "futurehouse/bixbench"
+ENV = "PROD"
+JOB_NAME = "job-futurehouse-data-analysis-crow"
+CROW_STAGE = getattr(Stage, "LOCAL")  # TODO: Change to ENV
+API_KEY = os.environ.get(f"CROW_API_KEY_{ENV}")
+DATASET_NAME = "bb50k"
+if DATASET_NAME == "bixbench":
+    GCS_ARTIFACT_PATH = "bixbench_data/"
+    HF_REPO = "futurehouse/bixbench"
+    SUBMIT_ANSWER_PROMPT = prompts.SUBMIT_ANSWER_OPEN
+elif DATASET_NAME == "bb50k":
+    BB50K_PATH = "local/bb50k/ngs_analysis_rna_seq_dge_dataset_0_qa_metadata_questions_20250404_210834.json"
+    GCS_ARTIFACT_PATH = "bb50k/"
+    SUBMIT_ANSWER_PROMPT = prompts.SUBMIT_ANSWER_SINGLE
+else:
+    raise ValueError(f"Dataset {DATASET_NAME} not supported")
 MODEL = "claude-3-7-sonnet-latest"
 TEMPERATURE = 1
 NUM_RETRIES = 3
 MAX_STEPS = 50
 AVOID_IMAGES = True
-NUM_ITERATIONS = 5
-RUN_NAME = "baseline-3.7-single-cell-run2"
+NUM_ITERATIONS = 2
+RUN_NAME = "bb50k_v1"
 RESULTS_FILE = f"local/bixbench_runs/{RUN_NAME}-{time.strftime('%Y%m%d-%H%M%S')}.json"
 RUNTIME_PARAMS = {
     "model": MODEL,
@@ -39,6 +47,7 @@ RUNTIME_PARAMS = {
     "avoid_images": AVOID_IMAGES,
     "run_name": RUN_NAME,
 }
+MINI_MODE = False
 MINUTES = 60
 SLEEP_TIME = 0.5 * MINUTES
 
@@ -59,9 +68,9 @@ async def prepare_job(capsule: dict[str, Any]) -> JobRequest:
             {formatted_question}
             </query>
 
-            {prompts.CHAIN_OF_THOUGHT_AGNOSTIC}
-            {prompts.SUBMIT_ANSWER_OPEN}
-            {prompts.GENERAL_NOTEBOOK_GUIDELINES}"""
+            {prompts.CHAIN_OF_THOUGHT_AGNOSTIC_PYTHON}
+            {SUBMIT_ANSWER_PROMPT}
+            {prompts.GENERAL_NOTEBOOK_GUIDELINES_PYTHON}"""
 
     if AVOID_IMAGES:
         task += prompts.AVOID_IMAGES
@@ -83,7 +92,10 @@ async def prepare_job(capsule: dict[str, Any]) -> JobRequest:
         name=JOB_NAME,
         query=task,
         runtime_config=RuntimeConfig(
-            agent=agent, max_steps=MAX_STEPS, upload_id=capsule["data_folder"]
+            agent=agent,
+            max_steps=MAX_STEPS,
+            upload_id=capsule["data_folder"],
+            environment_config={"run_notebook_on_edit": False, "eval": True},
         ),
     )
     return job_data
@@ -124,6 +136,45 @@ async def load_bixbench_data(
             }
         )
     return processed_dataset
+
+
+async def load_bb50k_data(
+    open_question: bool = True,
+) -> list[dict[str, Any]]:
+    """Load the BixBench dataset."""
+    data = json.load(
+        open(
+            "local/bb50k/ngs_analysis_rna_seq_dge_dataset_0_qa_metadata_questions_20250404_210834.json"
+        )
+    )
+    data = data["questions"]
+    processed_data = []
+    for i in data:
+        processed_data.append(
+            {
+                "data_folder": GCS_ARTIFACT_PATH + "dataset0",
+                "short_id": i["qa_id"],
+                "categories": i["generator_class"],
+                "uuid": i["qa_id"],
+                "domain": i["domain"],
+                "workflow": i["workflow"],
+                "dataset": i["dataset"],
+                "source_node": i["source_node"],
+                "node_execution_order": i["node_execution_order"],
+                "answer_type": i["answer_type"],
+                "template": i["template"],
+                "questions": [
+                    MultipleChoiceQuestion(
+                        question=i["question"],
+                        options=[],
+                        ideal_answer=str(i["answer_value"]),
+                        shuffle_seed=MultipleChoiceQuestion.SEED_USING_QUESTION,
+                        prompt_without_options=open_question,
+                    )
+                ],
+            }
+        )
+    return processed_data
 
 
 async def submit_jobs(
@@ -189,7 +240,16 @@ async def save_results(jobs: list[dict[str, Any]], output_file: str):
 
 
 async def main():
-    data = await load_bixbench_data()
+    if DATASET_NAME == "bixbench":
+        data = await load_bixbench_data()
+    elif DATASET_NAME == "bb50k":
+        data = await load_bb50k_data()
+    else:
+        raise ValueError(f"Dataset {DATASET_NAME} not supported")
+
+    if MINI_MODE:
+        data = data[:5]
+
     jobs = await submit_jobs(data)
     await save_results(jobs, RESULTS_FILE)
 

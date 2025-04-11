@@ -11,6 +11,8 @@ from aviary.core import (
     Tool,
 )
 
+from llmclient import GLOBAL_COST_TRACKER, enable_cost_tracking
+
 from .notebook_env import NBEnvironment
 from .utils import NBLanguage, MultipleChoiceQuestion, nb_to_html
 from . import prompts
@@ -83,7 +85,7 @@ class DataAnalysisEnv(NBEnvironment):
     def export_frame(self) -> Frame:
         return Frame(
             state={
-                "last_action": self.state.actions[-1],
+                "last_action": self.state.actions[-1] if self.state.actions else None,
                 "answer": self.state.answer,
                 "done": self.state.done,
                 "total_reward": self.state.total_reward,
@@ -96,6 +98,7 @@ class DataAnalysisEnv(NBEnvironment):
                 "language": self.state.language,
                 "problem": self.problem,
                 "problem_id": self.problem_id,
+                "cost": GLOBAL_COST_TRACKER.lifetime_cost_usd,
             },
         )
 
@@ -117,7 +120,8 @@ class DataAnalysisEnv(NBEnvironment):
         logger.info("User task: %s", task)
         logger.info("GCS artifact path: %s", gcs_artifact_path)
         logger.info("environment_config: %s", environment_config)
-
+        # Track cost of running the environment
+        enable_cost_tracking()
         if (
             not gcs_artifact_path
         ):  # Platform jobs should always be associated with data from a GCS bucket
@@ -136,6 +140,7 @@ class DataAnalysisEnv(NBEnvironment):
         logger.info("Filtered kwargs: %s", kwargs)
         task_hash = hashlib.sha256(task.encode()).hexdigest()
         if kwargs.get("eval", False):
+            logger.info("Eval mode is True")
             # Create a temporary directory in GCP mounted storage volume
             trajectory_path = cfg.DATA_STORAGE_PATH / f"{task_hash}-{time.time()}"
             trajectory_path.mkdir(parents=True, exist_ok=True)
@@ -147,6 +152,7 @@ class DataAnalysisEnv(NBEnvironment):
                         item, trajectory_path / item.name, dirs_exist_ok=True
                     )
         else:
+            logger.info("Eval mode is False")
             # Use the GCP folder created when uploading the data via the platform
             trajectory_path = cfg.DATA_STORAGE_PATH / gcs_artifact_path
             # Augment incoming user query with CoT instructions
@@ -160,7 +166,7 @@ class DataAnalysisEnv(NBEnvironment):
             )
         logger.info("Trajectory path: %s", trajectory_path)
         nb_path = trajectory_path / NBEnvironment.NOTEBOOK_NAME
-
+        logger.info("NB path: %s", nb_path)
         language = NBLanguage.PYTHON  # In future, this should be a hyperparameter
         if language == NBLanguage.R:
             task += f"\n{prompts.R_OUTPUT_RECOMMENDATION_PROMPT}"

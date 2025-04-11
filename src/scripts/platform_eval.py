@@ -8,15 +8,14 @@ import pandas as pd
 import logging
 from pathlib import Path
 from crow_client import CrowClient
-from crow_client.models import (
-    AuthType,
-    Stage,
-)
+from crow_client.models import AuthType, Stage, JobResponse
 from aviary.utils import MultipleChoiceQuestion, eval_answer, EvalAnswerMode
 
 
 # Configure logging
 logger = logging.getLogger(__name__)
+
+ENV = "PROD"
 
 
 def setup_logging(log_level: int = logging.INFO) -> None:
@@ -32,7 +31,7 @@ def setup_logging(log_level: int = logging.INFO) -> None:
 
 def create_client(
     api_key: Optional[str] = None,
-    stage: Stage = Stage.DEV,
+    stage: Stage = getattr(Stage, ENV),
     organization: str = "FutureHouse",
 ) -> CrowClient:
     """Create and return a CrowClient instance."""
@@ -40,7 +39,7 @@ def create_client(
         stage=stage,
         organization=organization,
         auth_type=AuthType.API_KEY,
-        api_key=api_key or os.environ["CROW_API_KEY"],
+        api_key=api_key or os.environ[f"CROW_API_KEY_{ENV}"],
     )
 
 
@@ -78,8 +77,10 @@ async def fetch_jobs_batch(
         List of fetched jobs
     """
 
-    async def get_job_async(job_id: str) -> Dict[str, Any]:
-        return await asyncio.to_thread(client.get_job, job_id)
+    async def get_job_async(job_id: str) -> JobResponse:
+        return await asyncio.to_thread(
+            client.get_job, job_id, False, True
+        )  # False for history, True for verbose
 
     results = []
 
@@ -97,7 +98,7 @@ async def fetch_jobs_batch(
 
         if i + batch_size < len(job_ids):
             await asyncio.sleep(0.5)
-
+    results = [i.model_dump() for i in results]
     return results
 
 
@@ -167,6 +168,7 @@ def prepare_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         Processed DataFrame ready for evaluation
     """
+    print(df.head())
     df["answer"] = df["environment_frame"].apply(fetch_answer)
     df["question_keys"] = df["questions"].apply(lambda x: [i["question_id"] for i in x])
     exploded = df.explode("question_keys")
@@ -248,7 +250,7 @@ async def main(
     output_path: Union[str, Path],
     job_request_batch_size: int = 10,
     api_key: Optional[str] = None,
-    stage: Stage = Stage.DEV,
+    stage: Stage = getattr(Stage, ENV),
     organization: str = "FutureHouse",
     log_level: int = logging.INFO,
 ) -> Tuple[pd.DataFrame, Dict[str, Union[int, float]]]:
