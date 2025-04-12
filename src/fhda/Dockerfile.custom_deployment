@@ -31,7 +31,6 @@ ENV PYTHONPATH="/app/miniconda/lib/python3.12/site-packages:${PYTHONPATH:-}"
 RUN pip3 install --no-cache-dir uv==0.5.21
 RUN conda install -c conda-forge mamba -y
 
-
 # Install R and kernels in the crow_env environment
 RUN mamba install -c conda-forge -y \
     r-base=4.3.3 \
@@ -91,6 +90,7 @@ RUN mamba install -c conda-forge -c bioconda -y \
     gseapy=1.1.4 \
     blast=2.16.0 \
     clipkit=2.3.0 \
+    clustalo=1.2.4 \
     fastqc=0.12.1 \
     iqtree=2.3.6 \
     mafft=7.526 \
@@ -116,7 +116,7 @@ FROM base AS builder
 
 ARG MODULE_NAME
 ARG USE_INTERNAL_DEPS
-ARG USE_GIT_CROW_CLIENT
+ARG USE_GIT_FUTUREHOUSE_CLIENT
 
 
 RUN mkdir -p ~/.ssh && \
@@ -150,12 +150,12 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     else \
         echo 'Skipping aviary_internal install'; \
     fi && \
-    if [ "$USE_GIT_CROW_CLIENT" = "true" ]; then \
+    if [ "$USE_GIT_FUTUREHOUSE_CLIENT" = "true" ]; then \
         git clone git@github.com:Future-House/crow-ecosystem.git /app/crow-ecosystem && \
-        cd /app/crow-ecosystem/packages/crow-client && \
+        cd /app/crow-ecosystem/packages/futurehouse-client && \
         uv pip install --system -e .; \
     else \
-        uv pip install --system crow-client; \
+        uv pip install --system futurehouse-client; \
     fi
 
 WORKDIR /app/${MODULE_NAME}
@@ -173,6 +173,11 @@ RUN --mount=type=ssh \
 
 RUN find /app -type l -delete && \
     rm -rf /app/.git
+
+# Fix futurehouse_client imports by creating a symlink if we're using the git version
+RUN if [ "$USE_GIT_FUTUREHOUSE_CLIENT" = "true" ]; then \
+    ln -sf /app/crow-ecosystem/packages/futurehouse-client/futurehouse_client /app/miniconda/lib/python3.12/site-packages/futurehouse_client; \
+    fi
 
 FROM base AS runtime
 

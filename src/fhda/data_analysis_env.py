@@ -117,7 +117,7 @@ class DataAnalysisEnv(NBEnvironment):
             gcs_artifact_path: The path to the GCS artifact – required for evaluation on crow jobs
             environment_config: A JSON string of environment configuration
         """
-        logger.info("User task: %s", task)
+        logger.info("User task: %s", task[:100])
         logger.info("GCS artifact path: %s", gcs_artifact_path)
         logger.info("environment_config: %s", environment_config)
         # Track cost of running the environment
@@ -137,9 +137,10 @@ class DataAnalysisEnv(NBEnvironment):
             }
         else:
             kwargs = {}
+            environment_config = {}
         logger.info("Filtered kwargs: %s", kwargs)
         task_hash = hashlib.sha256(task.encode()).hexdigest()
-        if kwargs.get("eval", False):
+        if environment_config.get("eval", False):
             logger.info("Eval mode is True")
             # Create a temporary directory in GCP mounted storage volume
             trajectory_path = cfg.DATA_STORAGE_PATH / f"{task_hash}-{time.time()}"

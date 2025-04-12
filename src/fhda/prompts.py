@@ -70,7 +70,8 @@ General Guidelines:
 - Ensure each cell executes successfully before moving to the next.
 - Assume you already have the packages you need installed and only install new ones if you receive errors.
 - If you need to install packages, use pip.
-- All cells are by default Python cells. Use python for all analysis.
+- All cells are by default Python cells. Use python or bash tools for all analysis.
+- You can use bash cells by adding %%bash to the first line of the cell or running a subprocess.
 """
 
 GENERAL_NOTEBOOK_GUIDELINES_R = """
@@ -223,7 +224,7 @@ Write out your analysis plan as comments in the notebook.
 
 4. Execute Analysis Plan:
 <analysis_planning>
-- For each step in your analysis plan, list the Python functions and libraries you'll use.
+- For each step in your analysis plan, list the Python or bash functions and libraries you'll use.
 - Think about how to structure your code for readability and efficiency.
 - Plan how to document your code with clear comments.
 - Consider how to present results clearly, using tables or visualizations where appropriate.

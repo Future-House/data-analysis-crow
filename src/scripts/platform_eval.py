@@ -327,7 +327,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--job-file-path",
         type=str,
-        default="local/bixbench_runs/baseline-3.7-single-cell-run2-20250325-065452.json",
+        default="local/bixbench_runs/bb50k_v2-20250412-094827.json",
         help="Path to Job data file with all the job IDs",
     )
     parser.add_argument(

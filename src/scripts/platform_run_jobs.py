@@ -17,8 +17,8 @@ import src.fhda.prompts as prompts
 logger = logging.getLogger(__name__)
 
 ENV = "PROD"
-JOB_NAME = "job-futurehouse-data-analysis-crow"
-CROW_STAGE = getattr(Stage, "LOCAL")  # TODO: Change to ENV
+JOB_NAME = "job-futurehouse-data-analysis-crow-high"
+CROW_STAGE = getattr(Stage, ENV)
 API_KEY = os.environ.get(f"CROW_API_KEY_{ENV}")
 DATASET_NAME = "bb50k"
 if DATASET_NAME == "bixbench":
@@ -142,17 +142,12 @@ async def load_bb50k_data(
     open_question: bool = True,
 ) -> list[dict[str, Any]]:
     """Load the BixBench dataset."""
-    data = json.load(
-        open(
-            "local/bb50k/ngs_analysis_rna_seq_dge_dataset_0_qa_metadata_questions_20250404_210834.json"
-        )
-    )
-    data = data["questions"]
+    data = json.load(open("local/bb50k/single_dataset_per_wf.json"))
     processed_data = []
     for i in data:
         processed_data.append(
             {
-                "data_folder": GCS_ARTIFACT_PATH + "dataset0",
+                "data_folder": f"{GCS_ARTIFACT_PATH}/{i['workflow']}/{i['dataset'].replace('dataset_', '')}",
                 "short_id": i["qa_id"],
                 "categories": i["generator_class"],
                 "uuid": i["qa_id"],
@@ -248,7 +243,7 @@ async def main():
         raise ValueError(f"Dataset {DATASET_NAME} not supported")
 
     if MINI_MODE:
-        data = data[:5]
+        data = data[:2]
 
     jobs = await submit_jobs(data)
     await save_results(jobs, RESULTS_FILE)
