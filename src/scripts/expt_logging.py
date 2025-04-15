@@ -2,7 +2,7 @@ import logging
 import os
 
 from ldp.utils import configure_stdout_logs
-from llmclient import configure_llm_logs
+from lmi import configure_llm_logs
 
 logger = logging.getLogger(__name__)
 

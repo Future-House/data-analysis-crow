@@ -11,7 +11,7 @@ from aviary.core import (
     Tool,
 )
 
-from llmclient import GLOBAL_COST_TRACKER, enable_cost_tracking
+from lmi.cost_tracker import GLOBAL_COST_TRACKER, enable_cost_tracking
 
 from .notebook_env import NBEnvironment
 from .utils import NBLanguage, MultipleChoiceQuestion, nb_to_html

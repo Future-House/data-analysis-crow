@@ -22,7 +22,7 @@ from aviary.core import (
 from ldp.agent import Agent
 from ldp.alg import Callback
 from ldp.data_structures import Trajectory, Transition
-from llmclient.cost_tracker import GLOBAL_COST_TRACKER
+from lmi.cost_tracker import GLOBAL_COST_TRACKER
 from fhda.storage import DataRepo
 
 logger = logging.getLogger(__name__)
