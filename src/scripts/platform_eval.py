@@ -7,8 +7,8 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import pandas as pd
 import logging
 from pathlib import Path
-from crow_client import CrowClient, JobResponseVerbose
-from crow_client.models import AuthType, Stage
+from futurehouse_client import FutureHouseClient, JobResponseVerbose
+from futurehouse_client.models import AuthType, Stage
 from aviary.utils import MultipleChoiceQuestion, eval_answer, EvalAnswerMode
 
 
@@ -33,9 +33,9 @@ def create_client(
     api_key: Optional[str] = None,
     stage: Stage = getattr(Stage, ENV),
     organization: str = "FutureHouse",
-) -> CrowClient:
-    """Create and return a CrowClient instance."""
-    return CrowClient(
+) -> FutureHouseClient:
+    """Create and return a FutureHouseClient instance."""
+    return FutureHouseClient(
         stage=stage,
         organization=organization,
         auth_type=AuthType.API_KEY,
@@ -64,12 +64,12 @@ def load_job_data(file_path: Union[str, Path]) -> List[Dict[str, Any]]:
 
 
 async def fetch_jobs_batch(
-    client: CrowClient, job_ids: List[str], batch_size: int = 10
+    client: FutureHouseClient, job_ids: List[str], batch_size: int = 10
 ) -> List[Dict[str, Any]]:
     """Fetch jobs in batches to avoid memory issues.
 
     Args:
-        client: CrowClient instance
+        client: FutureHouseClient instance
         job_ids: List of job IDs to fetch
         batch_size: Number of jobs to fetch in each batch
 
