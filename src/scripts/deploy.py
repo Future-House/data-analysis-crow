@@ -60,7 +60,7 @@ def rename_dockerfile(path: Path, new_name: str):
 if __name__ == "__main__":
     client = CrowClient(
         # stage=Stage.from_string(os.environ.get("CROW_ENV", ENV_VARS["STAGE"])),
-        stage=Stage.from_string(os.environ.get("CROW_ENV", "LOCAL")),
+        stage=Stage.from_string(os.environ.get("CROW_ENV", "PROD")),
         organization="FutureHouse",
         auth_type=AuthType.API_KEY,
         api_key=os.environ[f"CROW_API_KEY_{ENV_VARS['STAGE']}"],

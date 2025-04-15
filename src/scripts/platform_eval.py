@@ -7,8 +7,8 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import pandas as pd
 import logging
 from pathlib import Path
-from crow_client import CrowClient
-from crow_client.models import AuthType, Stage, JobResponse
+from crow_client import CrowClient, JobResponseVerbose
+from crow_client.models import AuthType, Stage
 from aviary.utils import MultipleChoiceQuestion, eval_answer, EvalAnswerMode
 
 
@@ -77,7 +77,7 @@ async def fetch_jobs_batch(
         List of fetched jobs
     """
 
-    async def get_job_async(job_id: str) -> JobResponse:
+    async def get_job_async(job_id: str) -> JobResponseVerbose:
         return await asyncio.to_thread(
             client.get_job, job_id, False, True
         )  # False for history, True for verbose
@@ -327,7 +327,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--job-file-path",
         type=str,
-        default="local/bixbench_runs/baseline-3.7-single-cell-run2-20250325-065452.json",
+        default="local/bixbench_runs/bb50k_v2-20250412-094827.json",
         help="Path to Job data file with all the job IDs",
     )
     parser.add_argument(
@@ -337,7 +337,7 @@ if __name__ == "__main__":
         help="Path to save evaluation results",
     )
     parser.add_argument(
-        "--batch-size", type=int, default=50, help="Batch size for job requests"
+        "--batch-size", type=int, default=200, help="Batch size for job requests"
     )
     parser.add_argument(
         "--api-key",

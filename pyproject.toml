@@ -10,6 +10,7 @@ dependencies = [
   "aiodocker==0.24.0",
   "fhaviary[server]==0.18.1",
   "fhlmi==0.26.0",
+  "fh-llm-client==0.0.11", # TODO deprecate this
   "ldp==0.23.0",
   "pandas==2.2.3",
   "numpy==2.2.3",
@@ -22,7 +23,8 @@ dependencies = [
   "google-auth==2.38.0",
   "google-cloud-storage==3.0.0",
   "google-cloud-secret-manager==2.23.0",
-  "crow-client>=0.3.14",
+  "crow-client>=0.3.14", # TODO deprecate this
+  "futurehouse-client", # TODO pin this
   "jupyter==1.1.1",
   "nbconvert==7.16.6",
   "notebook==7.3.2",
