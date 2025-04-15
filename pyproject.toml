@@ -9,6 +9,8 @@ authors = [
 dependencies = [
   "aiodocker==0.24.0",
   "fhaviary[server]==0.18.1",
+  "fhlmi==0.26.0",
+  "fh-llm-client==0.0.11", # TODO deprecate this
   "ldp==0.23.0",
   "pandas==2.2.3",
   "numpy==2.2.3",

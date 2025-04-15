@@ -149,7 +149,7 @@ async def load_bb50k_data(
             {
                 "data_folder": f"{GCS_ARTIFACT_PATH}/{i['workflow']}/{i['dataset'].replace('dataset_', '')}",
                 "short_id": i["qa_id"],
-                "categories": i["generator_class"],
+                "generator_class": i["generator_class"],
                 "uuid": i["qa_id"],
                 "domain": i["domain"],
                 "workflow": i["workflow"],
