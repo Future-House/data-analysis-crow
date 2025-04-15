@@ -16,7 +16,7 @@ from ldp.alg import Evaluator, EvaluatorConfig, TrajectoryFileCallback
 from ldp.alg.callbacks import Callback
 from ldp.alg.rollout import RolloutManager
 from ldp.data_structures import Transition
-from llmclient.cost_tracker import enable_cost_tracking
+from lmi.cost_tracker import enable_cost_tracking
 from pydantic import Field, model_validator
 
 from fhda.data_analysis_env import DataAnalysisEnv

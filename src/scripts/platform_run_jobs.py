@@ -80,7 +80,7 @@ async def prepare_job(capsule: dict[str, Any]) -> JobRequest:
         agent_type="ReActAgent",
         agent_kwargs={
             "llm_model": {
-                "model": MODEL,
+                "name": MODEL,
                 "temperature": TEMPERATURE,
                 "num_retries": NUM_RETRIES,
             },

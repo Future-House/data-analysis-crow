@@ -17,7 +17,7 @@ import yaml
 from pydantic import BaseModel, ConfigDict
 from pydantic_core import PydanticUndefined
 from ldp.utils import configure_stdout_logs
-from llmclient import configure_llm_logs
+from lmi import configure_llm_logs
 
 
 logger = logging.getLogger(__name__)
