@@ -9,9 +9,9 @@ import time
 import datasets
 from ldp.agent import AgentConfig
 from aviary.core import MultipleChoiceQuestion
-from crow_client import CrowClient
-from crow_client.models import Stage, JobRequest, RuntimeConfig
-from crow_client.models.app import AuthType
+from futurehouse_client import FutureHouseClient
+from futurehouse_client.models import Stage, JobRequest, RuntimeConfig
+from futurehouse_client.models.app import AuthType
 import src.fhda.prompts as prompts
 
 logger = logging.getLogger(__name__)
@@ -187,7 +187,7 @@ async def submit_jobs(
         The answer string from the agent
     """
 
-    client = CrowClient(
+    client = FutureHouseClient(
         stage=CROW_STAGE,
         auth_type=AuthType.API_KEY,
         api_key=API_KEY,

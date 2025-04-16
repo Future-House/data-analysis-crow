@@ -141,7 +141,7 @@ class NBEnvironment(Environment[NBEnvironmentState]):
                 directories from the aviary-storage GCS bucket. Should only be enabled if the
                 task requires data on GCS. Disabled by default.
             run_notebook_on_edit: If True (default), the whole notebook will be rerun
-                after each edit. If False, only a the cell that was edited will be rerun.
+                after each edit. If False, only the cell that was edited will be rerun.
         """
         self.work_dir = Path(work_dir)
         self.nb_path = Path(nb_path) if nb_path else self.work_dir / self.NOTEBOOK_NAME

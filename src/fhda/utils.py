@@ -32,6 +32,25 @@ JUPYTER_TABLE_OUTPUT_TYPES_TO_IGNORE = {
 }
 
 
+def configure_logging():
+    """Configure logging for the application."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
+
+    loggers_config = {
+        "LiteLLM": logging.WARNING,
+        "LiteLLM Router": logging.WARNING,
+        "LiteLLM Proxy": logging.WARNING,
+        "httpx": logging.WARNING,
+        "httpcore.http11": logging.WARNING,
+    }
+
+    for logger_name, level in loggers_config.items():
+        logging.getLogger(logger_name).setLevel(level)
+
+
 class NBLanguage(StrEnum):
     PYTHON = auto()
     R = auto()
