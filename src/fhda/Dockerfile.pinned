@@ -81,13 +81,13 @@ COPY kernel_requirements.txt .
 RUN mamba install -c conda-forge --file kernel_requirements.txt -y
 
 # Install pip packages
-RUN pip install aiodocker ldp==0.23.0 fhaviary[server]==0.18.1 crow-client==0.3.6
+RUN pip install aiodocker ldp==0.26.0 fhaviary[server]==0.19.0 futurehouse-client==0.3.14
 
 # Certain tools are not easily installable via conda. A common practice for
 # bioinformaticians is to use udocker to run certain heavy duty omics processing
 # tools in an isolated environment
-RUN udocker --allow-root install && \
-    udocker --allow-root pull ezlabgva/busco:v5.8.0_cv1
+# RUN udocker --allow-root install && \
+#     udocker --allow-root pull ezlabgva/busco:v5.8.0_cv1
 
 WORKDIR /workspace
 

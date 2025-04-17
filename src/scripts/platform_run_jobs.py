@@ -31,6 +31,7 @@ elif DATASET_NAME == "bb50k":
     SUBMIT_ANSWER_PROMPT = prompts.SUBMIT_ANSWER_SINGLE
 else:
     raise ValueError(f"Dataset {DATASET_NAME} not supported")
+NB_LANGUAGE = "PYTHON"
 MODEL = "claude-3-7-sonnet-latest"
 TEMPERATURE = 1
 NUM_RETRIES = 3
@@ -68,9 +69,9 @@ async def prepare_job(capsule: dict[str, Any]) -> JobRequest:
             {formatted_question}
             </query>
 
-            {prompts.CHAIN_OF_THOUGHT_AGNOSTIC_PYTHON}
+            {prompts.CHAIN_OF_THOUGHT_AGNOSTIC.format(language=NB_LANGUAGE)}
             {SUBMIT_ANSWER_PROMPT}
-            {prompts.GENERAL_NOTEBOOK_GUIDELINES_PYTHON}"""
+            {prompts.GENERAL_NOTEBOOK_GUIDELINES.format(language=NB_LANGUAGE)}"""
 
     if AVOID_IMAGES:
         task += prompts.AVOID_IMAGES
@@ -95,7 +96,11 @@ async def prepare_job(capsule: dict[str, Any]) -> JobRequest:
             agent=agent,
             max_steps=MAX_STEPS,
             upload_id=capsule["data_folder"],
-            environment_config={"run_notebook_on_edit": False, "eval": True},
+            environment_config={
+                "run_notebook_on_edit": False,
+                "eval": True,
+                "language": NB_LANGUAGE,
+            },
         ),
     )
     return job_data
