@@ -162,13 +162,16 @@ class DataAnalysisEnv(NBEnvironment):
                 f"<query>\n"
                 f"{task}\n"
                 f"</query>\n"
-                f"{prompts.CHAIN_OF_THOUGHT_AGNOSTIC}\n"
-                f"{prompts.GENERAL_NOTEBOOK_GUIDELINES}"
+                f"{prompts.CHAIN_OF_THOUGHT_AGNOSTIC.format(language=kwargs.get('language', 'PYTHON'))}\n"
+                f"{prompts.GENERAL_NOTEBOOK_GUIDELINES.format(language=kwargs.get('language', 'PYTHON'))}"
             )
         logger.info("Trajectory path: %s", trajectory_path)
         nb_path = trajectory_path / NBEnvironment.NOTEBOOK_NAME
         logger.info("NB path: %s", nb_path)
-        language = NBLanguage.PYTHON  # In future, this should be a hyperparameter
+        language = getattr(NBLanguage, environment_config.get("language", "PYTHON"))
+        # Overwrite the language in the kwargs with NBLanguage enum
+        kwargs["language"] = language
+        logger.info("Language: %s", language.name)
         if language == NBLanguage.R:
             task += f"\n{prompts.R_OUTPUT_RECOMMENDATION_PROMPT}"
 
@@ -188,7 +191,6 @@ class DataAnalysisEnv(NBEnvironment):
             eval_mode=EvalAnswerMode.LLM,
             nb_path=nb_path,
             work_dir=trajectory_path,
-            language=language,
             system_prompt=prompts.CAPSULE_SYSTEM_PROMPT_QUERY,
             use_tmp_work_dir=False,
             **kwargs,

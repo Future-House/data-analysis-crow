@@ -17,7 +17,6 @@ HIGH = True
 ENV_VARS = {
     "OPENAI_API_KEY": os.environ["OPENAI_API_KEY"],
     "ANTHROPIC_API_KEY": os.environ["ANTHROPIC_API_KEY"],
-    "USE_R": "false",
     "USE_DOCKER": "false",
     "STAGE": "PROD",
 }

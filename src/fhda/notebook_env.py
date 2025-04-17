@@ -49,9 +49,6 @@ class NBEnvironmentState:
             self.reload_nb()
         else:
             self.nb = nbformat.v4.new_notebook()
-            if cfg.USE_R:
-                # Add initial cell with rpy2 extension load
-                nbformat.v4.new_code_cell(source="%load_ext rpy2.ipython")
             self.nb.metadata.kernelspec = self.language.make_kernelspec()
         self.notebook_runtime_errors: list[str] = []
 

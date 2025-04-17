@@ -2,7 +2,6 @@ import os
 from pathlib import Path
 
 USE_DOCKER = bool(os.getenv("USE_DOCKER", "true").lower() == "true")
-USE_R = bool(os.getenv("USE_R", "false").lower() == "true")
 NB_ENVIRONMENT_DOCKER_IMAGE = os.getenv(
     "NB_ENVIRONMENT_DOCKER_IMAGE", "futurehouse/bixbench:aviary-notebook-env"
 )
