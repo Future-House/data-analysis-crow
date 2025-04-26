@@ -19,4 +19,4 @@ if STAGE == "local":
 else:
     DATA_STORAGE_PATH = Path("/storage")
 
-VALID_FROM_TASK_KWARGS = ["run_notebook_on_edit"]
+VALID_FROM_TASK_KWARGS = ["run_notebook_on_edit", "exclude_tools"]

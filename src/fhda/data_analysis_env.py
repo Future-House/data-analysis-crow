@@ -36,6 +36,7 @@ class DataAnalysisEnv(NBEnvironment):
         eval_mode: EvalAnswerMode | None = None,
         metadata: dict[str, Any] | None = None,  # used for NBEvalExpt
         mcqs: list[MultipleChoiceQuestion] | None = None,
+        exclude_tools: list[str] | None = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -49,21 +50,38 @@ class DataAnalysisEnv(NBEnvironment):
         self.system_prompt = system_prompt
         self.metadata = metadata
         self.question_rewards: dict[str, int] = {}
+        self.exclude_tools = exclude_tools
 
     async def reset(self) -> tuple[Messages, list[Tool]]:
         # Discard base class's init_obs and make our own with the problem statement
         _, tools = await super().reset()
+        if self.exclude_tools:
+            tools = [
+                tool
+                for tool in tools
+                if tool._tool_fn.__name__ not in self.exclude_tools
+            ]
+
         messages = [
             Message(content=self.problem),
             self.get_env_state_msg(),
         ]
+        # If the list_workdir tool is excluded, add the content of the working directory to the initial message
+        if self.exclude_tools is not None and "list_workdir" in self.exclude_tools:
+            messages.append(
+                Message(
+                    content=f"Here is the content of your working directory:\n{self.list_workdir()}"
+                )
+            )
+
         if self.system_prompt:
             messages.append(Message(role="system", content=self.system_prompt))
         init_obs = cast(
             Messages,
             messages,
         )
-
+        print(messages)
+        print(tools)
         return init_obs, tools
 
     async def submit_answer(self, answer: str) -> str:  # type: ignore[override]
