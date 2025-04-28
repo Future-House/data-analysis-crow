@@ -80,8 +80,7 @@ class DataAnalysisEnv(NBEnvironment):
             Messages,
             messages,
         )
-        print(messages)
-        print(tools)
+
         return init_obs, tools
 
     async def submit_answer(self, answer: str) -> str:  # type: ignore[override]
