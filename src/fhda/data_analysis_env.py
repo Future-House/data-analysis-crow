@@ -116,6 +116,7 @@ class DataAnalysisEnv(NBEnvironment):
                 "problem": self.problem,
                 "problem_id": self.problem_id,
                 "cost": GLOBAL_COST_TRACKER.lifetime_cost_usd,
+                "work_dir": self.work_dir,
             },
         )
 
