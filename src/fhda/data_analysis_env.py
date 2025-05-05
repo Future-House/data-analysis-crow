@@ -190,8 +190,6 @@ class DataAnalysisEnv(NBEnvironment):
         # Overwrite the language in the kwargs with NBLanguage enum
         kwargs["language"] = language
         logger.info("Language: %s", language.name)
-        if language == NBLanguage.R:
-            task += f"\n{prompts.R_OUTPUT_RECOMMENDATION_PROMPT}"
 
         if trajectory_path.exists():
             files = list(trajectory_path.iterdir())

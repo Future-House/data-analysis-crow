@@ -21,7 +21,7 @@ ENV_VARS = {
     "STAGE": "PROD",
 }
 
-CONTAINER_CONFIG = DockerContainerConfiguration(cpu="2", memory="4Gi")
+CONTAINER_CONFIG = DockerContainerConfiguration(cpu="8", memory="16Gi")
 
 frame_paths = [
     FramePath(path="info.cost", type="text"),
