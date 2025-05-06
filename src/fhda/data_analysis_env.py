@@ -12,6 +12,8 @@ from aviary.core import (
 )
 
 from lmi.cost_tracker import GLOBAL_COST_TRACKER, enable_cost_tracking
+from futurehouse_client.models import TaskRequest, AuthType
+from futurehouse_client import FutureHouseClient
 
 from .notebook_env import NBEnvironment
 from .utils import NBLanguage, MultipleChoiceQuestion, nb_to_html
@@ -36,7 +38,8 @@ class DataAnalysisEnv(NBEnvironment):
         eval_mode: EvalAnswerMode | None = None,
         metadata: dict[str, Any] | None = None,  # used for NBEvalExpt
         mcqs: list[MultipleChoiceQuestion] | None = None,
-        exclude_tools: list[str] | None = None,
+        # Exclude list_workdir and query_literature tools by default
+        exclude_tools: list[str] | None = ["list_workdir", "query_literature"],
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -55,6 +58,9 @@ class DataAnalysisEnv(NBEnvironment):
     async def reset(self) -> tuple[Messages, list[Tool]]:
         # Discard base class's init_obs and make our own with the problem statement
         _, tools = await super().reset()
+
+        tools.append(Tool.from_function(self.query_literature))
+
         if self.exclude_tools:
             tools = [
                 tool
@@ -82,6 +88,43 @@ class DataAnalysisEnv(NBEnvironment):
         )
 
         return init_obs, tools
+
+    # DA Specific Tools
+
+    async def query_literature(self, query: str) -> str:
+        """Query the scientific literature. Produces a succinct answer citing the scientific literature.
+
+        Args:
+            query: The scientific question to answer
+        """
+        logger.info("Running PQA query")
+        client = FutureHouseClient(
+            stage=cfg.CROW_STAGE,
+            auth_type=AuthType.API_KEY,
+            api_key=cfg.PLATFORM_API_KEY,
+        )
+
+        job_data = TaskRequest(
+            name="job-futurehouse-paperqa2",
+            query=query,
+        )
+        job_id = client.create_task(job_data)
+        status = "in progress"
+        while status in ["in progress", "queued"]:
+            logger.info(
+                "Waiting for pqa task to complete... checking again in 5 seconds"
+            )
+            time.sleep(5)
+            status = client.get_task(job_id).status
+
+        if status == "failed":
+            raise Exception("PaperQA platform job failed")
+
+        job_result = client.get_task(job_id, verbose=True)
+        answer = job_result.environment_frame["state"]["state"]["response"]["answer"][
+            "answer"
+        ]
+        return answer
 
     async def submit_answer(self, answer: str) -> str:  # type: ignore[override]
         """Submit an answer to the problem.
