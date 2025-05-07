@@ -12,7 +12,7 @@ from futurehouse_client.models import (
 )
 from futurehouse_client.models.app import TaskQueuesConfig
 
-HIGH = False
+HIGH = True
 ENVIRONMENT = "DEV"
 
 ENV_VARS = {
@@ -85,8 +85,9 @@ if __name__ == "__main__":
         auth_type=AuthType.API_KEY,
         api_key=os.environ[f"CROW_API_KEY_{ENV_VARS['STAGE']}"],
     )
-
-    if not HIGH:
+    if HIGH:
+        print("Using custom deployment Dockerfile")
+    else:
         dockerfile_path = Path("src/fhda/Dockerfile.custom_deployment")
         rename_dockerfile(dockerfile_path, "Dockerfile_skip.custom_deployment")
 

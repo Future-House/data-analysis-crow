@@ -1,4 +1,3 @@
-import hashlib
 import logging
 import shutil
 from typing import Any, cast
@@ -16,7 +15,7 @@ from futurehouse_client.models import TaskRequest, AuthType
 from futurehouse_client import FutureHouseClient
 
 from .notebook_env import NBEnvironment
-from .utils import NBLanguage, MultipleChoiceQuestion, nb_to_html
+from .utils import NBLanguage, MultipleChoiceQuestion
 from . import prompts
 from . import config as cfg
 
@@ -150,7 +149,7 @@ class DataAnalysisEnv(NBEnvironment):
                 "done": self.state.done,
                 "total_reward": self.state.total_reward,
                 "nb_state": self.state.nb,
-                "nb_state_html": nb_to_html(self.state.nb),
+                # "nb_state_html": nb_to_html(self.state.nb), # temporarily disabled
                 "nb_runtime_errors": self.state.notebook_runtime_errors,
             },
             info={
@@ -168,6 +167,8 @@ class DataAnalysisEnv(NBEnvironment):
         cls,
         task: str,
         gcs_artifact_path: str | None = None,
+        trajectory_id: str | None = None,
+        user_id: str | None = None,
         environment_config: dict[str, Any] | None = None,
     ) -> "DataAnalysisEnv":
         """
@@ -178,9 +179,11 @@ class DataAnalysisEnv(NBEnvironment):
             gcs_artifact_path: The path to the GCS artifact – required for evaluation on crow jobs
             environment_config: A JSON string of environment configuration
         """
-        logger.info("User task: %s", task[:100])
+        logger.info("User task: %s", task[:50])
         logger.info("GCS artifact path: %s", gcs_artifact_path)
         logger.info("environment_config: %s", environment_config)
+        logger.info("trajectory_id: %s", trajectory_id)
+        logger.info("user_id: %s", user_id)
         # Track cost of running the environment
         enable_cost_tracking()
         if (
@@ -190,6 +193,22 @@ class DataAnalysisEnv(NBEnvironment):
                 "Running crow jobs without gcs_artifact_path is not supported"
             )
 
+        if user_id is None:
+            user_id = "default_user"
+        if trajectory_id is None:
+            trajectory_id = f"{gcs_artifact_path}-{time.time()}"
+
+        # Always create a new directory for the trajectory
+        trajectory_path = (
+            cfg.DATA_STORAGE_PATH / "user_trajectories" / user_id / trajectory_id
+        )
+        logger.info("Trajectory path: %s", trajectory_path)
+        trajectory_path.mkdir(parents=True, exist_ok=True)
+        for item in (cfg.DATA_STORAGE_PATH / gcs_artifact_path).iterdir():
+            if item.is_file():
+                shutil.copy2(item, trajectory_path)
+            elif item.is_dir():
+                shutil.copytree(item, trajectory_path / item.name, dirs_exist_ok=True)
         if environment_config:
             kwargs = {
                 k: v
@@ -200,39 +219,27 @@ class DataAnalysisEnv(NBEnvironment):
             kwargs = {}
             environment_config = {}
         logger.info("Filtered kwargs: %s", kwargs)
-        task_hash = hashlib.sha256(task.encode()).hexdigest()
-        if environment_config.get("eval", False):
-            logger.info("Eval mode is True")
-            # Create a temporary directory in GCP mounted storage volume
-            trajectory_path = cfg.DATA_STORAGE_PATH / f"{task_hash}-{time.time()}"
-            trajectory_path.mkdir(parents=True, exist_ok=True)
-            for item in (cfg.DATA_STORAGE_PATH / gcs_artifact_path).iterdir():
-                if item.is_file():
-                    shutil.copy2(item, trajectory_path)
-                elif item.is_dir():
-                    shutil.copytree(
-                        item, trajectory_path / item.name, dirs_exist_ok=True
-                    )
-        else:
-            logger.info("Eval mode is False")
-            # Use the GCP folder created when uploading the data via the platform
-            trajectory_path = cfg.DATA_STORAGE_PATH / gcs_artifact_path
-            # Augment incoming user query with CoT instructions
-            task = (
-                f"Here is the user query to address:\n"
-                f"<query>\n"
-                f"{task}\n"
-                f"</query>\n"
-                f"{prompts.CHAIN_OF_THOUGHT_AGNOSTIC.format(language=kwargs.get('language', 'PYTHON'))}\n"
-                f"{prompts.GENERAL_NOTEBOOK_GUIDELINES.format(language=kwargs.get('language', 'PYTHON'))}"
-            )
-        logger.info("Trajectory path: %s", trajectory_path)
-        nb_path = trajectory_path / NBEnvironment.NOTEBOOK_NAME
-        logger.info("NB path: %s", nb_path)
+
         language = getattr(NBLanguage, environment_config.get("language", "PYTHON"))
         # Overwrite the language in the kwargs with NBLanguage enum
         kwargs["language"] = language
         logger.info("Language: %s", language.name)
+
+        if not environment_config.get("eval", False):
+            logger.info(
+                "Platform job detected, augmenting user query with CoT instructions"
+            )
+            # If running via the platform, augment incoming user query with CoT instructions
+            task = (
+                f"{prompts.CHAIN_OF_THOUGHT_AGNOSTIC.format(language=kwargs.get('language', 'PYTHON'))}\n"
+                f"{prompts.GENERAL_NOTEBOOK_GUIDELINES.format(language=kwargs.get('language', 'PYTHON'))}"
+                f"Here is the research question to address:\n"
+                f"<query>\n"
+                f"{task}\n"
+                f"</query>\n"
+            )
+        nb_path = trajectory_path / NBEnvironment.NOTEBOOK_NAME
+        logger.info("NB path: %s", nb_path)
 
         if trajectory_path.exists():
             files = list(trajectory_path.iterdir())
@@ -245,12 +252,14 @@ class DataAnalysisEnv(NBEnvironment):
             raise ValueError(f"Trajectory path does not exist: {trajectory_path}")
 
         return cls(
-            problem_id=f"data-analysis-task-{task_hash}",
+            problem_id=f"data-analysis-task-{trajectory_id}",
             problem=task,
             eval_mode=EvalAnswerMode.LLM,
             nb_path=nb_path,
             work_dir=trajectory_path,
-            system_prompt=prompts.CAPSULE_SYSTEM_PROMPT_QUERY,
+            system_prompt=environment_config.get(
+                "system_prompt", prompts.CAPSULE_SYSTEM_PROMPT_QUERY
+            ),
             use_tmp_work_dir=False,
             **kwargs,
         )

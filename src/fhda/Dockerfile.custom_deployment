@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.4
-FROM python:3.12-slim AS base
+FROM python:3.12-slim@sha256:bae1a061b657f403aaacb1069a7f67d91f7ef5725ab17ca36abc5f1b2797ff92 AS base
 
 WORKDIR /app
 ENV PYTHONUNBUFFERED=1
@@ -120,6 +120,12 @@ RUN --mount=type=cache,target=/app/miniconda/pkgs \
 
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
+RUN mamba clean -all -y && \
+    rm -rf /app/miniconda/pkgs/* && \
+    find /app/miniconda \( -type d -name __pycache__ -o -type d -name tests -o -type d -name '*.tests' -o -type d -name 'test' \) -exec rm -rf {} + && \
+    find /app/miniconda -type f -name '*.a' -delete && \
+    find /app/miniconda -type f -name '*.js.map' -delete
+
 
 FROM base AS builder
 

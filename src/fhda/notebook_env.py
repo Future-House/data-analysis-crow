@@ -6,6 +6,7 @@ import shutil
 from pathlib import Path
 from tempfile import mkdtemp
 from typing import Any, ClassVar, Self, cast
+import asyncio
 
 import aiodocker
 import nbformat
@@ -334,11 +335,17 @@ class NBEnvironment(Environment[NBEnvironmentState]):
 
     async def _run_notebook_local(self, cell_idx: int | None = None) -> str:
         """Run notebook using local kernel."""
-        client = self.state.kernel_manager.client()
-        client.start_channels()
-        error_messages = await utils.nbformat_run_notebook(
-            cells=self.state.cells, client=client, cell_idx=cell_idx
-        )
+        try:
+            async with asyncio.timeout(self.EXEC_TIMEOUT):
+                client = self.state.kernel_manager.client()
+                client.start_channels()
+                error_messages = await utils.nbformat_run_notebook(
+                    cells=self.state.cells, client=client, cell_idx=cell_idx
+                )
+        except TimeoutError as err:
+            raise TimeoutError(
+                f"Notebook execution timed out after {self.EXEC_TIMEOUT} seconds"
+            ) from err
         if error_messages:
             self.state.notebook_runtime_errors.extend(error_messages)
         self.state.save_nb()
