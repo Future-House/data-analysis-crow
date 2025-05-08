@@ -40,12 +40,7 @@ R-Specific Guidelines:
    variable_name <- read_excel("<fpath>.csv", col_names = FALSE, .name_repair = "minimal")
    ```
 
-3. When printing dataframes, always wrap them in print() statements:
-   ```r
-   print(head(dataframe))
-   ```
-
-4. Very important: always use the tidyverse package where possible.
+3. Very important: always use the tidyverse package where possible.
 """
 
 

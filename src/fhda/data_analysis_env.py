@@ -96,6 +96,10 @@ class DataAnalysisEnv(NBEnvironment):
         Args:
             query: The scientific question to answer
         """
+
+        if cfg.PLATFORM_API_KEY is None:
+            raise Exception("Platform API key is not set")
+
         logger.info("Running PQA query")
         client = FutureHouseClient(
             stage=cfg.CROW_STAGE,
@@ -197,18 +201,6 @@ class DataAnalysisEnv(NBEnvironment):
             user_id = "default_user"
         if trajectory_id is None:
             trajectory_id = f"{gcs_artifact_path}-{time.time()}"
-
-        # Always create a new directory for the trajectory
-        trajectory_path = (
-            cfg.DATA_STORAGE_PATH / "user_trajectories" / user_id / trajectory_id
-        )
-        logger.info("Trajectory path: %s", trajectory_path)
-        trajectory_path.mkdir(parents=True, exist_ok=True)
-        for item in (cfg.DATA_STORAGE_PATH / gcs_artifact_path).iterdir():
-            if item.is_file():
-                shutil.copy2(item, trajectory_path)
-            elif item.is_dir():
-                shutil.copytree(item, trajectory_path / item.name, dirs_exist_ok=True)
         if environment_config:
             kwargs = {
                 k: v
@@ -218,6 +210,24 @@ class DataAnalysisEnv(NBEnvironment):
         else:
             kwargs = {}
             environment_config = {}
+        # Always create a new directory for the trajectory
+        trajectory_path = (
+            cfg.DATA_STORAGE_PATH / "user_trajectories" / user_id / trajectory_id
+        )
+        if environment_config.get("gcs_override", False):
+            data_path = cfg.DATA_STORAGE_PATH / gcs_artifact_path
+        else:
+            data_path = (
+                cfg.DATA_STORAGE_PATH / "user_data" / user_id / gcs_artifact_path
+            )
+        logger.info("Trajectory path: %s", trajectory_path)
+        logger.info("Data path: %s", data_path)
+        trajectory_path.mkdir(parents=True, exist_ok=True)
+        for item in data_path.iterdir():
+            if item.is_file():
+                shutil.copy2(item, trajectory_path)
+            elif item.is_dir():
+                shutil.copytree(item, trajectory_path / item.name, dirs_exist_ok=True)
         logger.info("Filtered kwargs: %s", kwargs)
 
         language = getattr(NBLanguage, environment_config.get("language", "PYTHON"))

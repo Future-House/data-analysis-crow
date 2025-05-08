@@ -12,12 +12,12 @@ from futurehouse_client.models import (
 )
 from futurehouse_client.models.app import TaskQueuesConfig
 
-HIGH = True
+HIGH = False
 ENVIRONMENT = "DEV"
 
 ENV_VARS = {
-    "OPENAI_API_KEY": os.environ["OPENAI_API_KEY"],
-    "ANTHROPIC_API_KEY": os.environ["ANTHROPIC_API_KEY"],
+    # "OPENAI_API_KEY": os.environ["OPENAI_API_KEY"],
+    # "ANTHROPIC_API_KEY": os.environ["ANTHROPIC_API_KEY"],
     "USE_DOCKER": "false",
     "STAGE": ENVIRONMENT,
     "ENVIRONMENT": ENVIRONMENT,
@@ -36,17 +36,85 @@ MODEL = "claude-3-7-sonnet-latest"
 TEMPERATURE = 1
 NUM_RETRIES = 3
 
-agent = AgentConfig(
-    agent_type="ReActAgent",
-    agent_kwargs={
+# agent = AgentConfig(
+#     agent_type="ReActAgent",
+#     agent_kwargs={
+#         "llm_model": {
+#             "name": MODEL,
+#             "temperature": TEMPERATURE,
+#             "num_retries": NUM_RETRIES,
+#         },
+#         "hide_old_env_states": True,
+#     },
+# )
+
+AGENT_MODEL_LIST = [
+    {
+        "model_name": "anthropic/claude-3-7-sonnet-20250219",
+        "litellm_params": {
+            "model": "anthropic/claude-3-7-sonnet-20250219",
+            "api_key": os.environ["ANTHROPIC_API_KEY"],
+        },
+    },
+    {
+        "model_name": "openai/gpt-4.1-2025-04-14",
+        "litellm_params": {
+            "model": "openai/gpt-4.1-2025-04-14",
+            "api_key": os.environ["OPENAI_API_KEY"],
+        },
+    },
+    {
+        "model_name": "anthropic/claude-3-5-sonnet-20241022",
+        "litellm_params": {
+            "model": "anthropic/claude-3-5-sonnet-20241022",
+            "api_key": os.environ["ANTHROPIC_API_KEY"],
+        },
+    },
+    {
+        "model_name": "openai/gpt-4o-2024-11-20",
+        "litellm_params": {
+            "model": "openai/gpt-4o-2024-11-20",
+            "api_key": os.environ["OPENAI_API_KEY"],
+        },
+    },
+]
+
+AGENT_ROUTER_KWARGS = {
+    "set_verbose": True,
+    # fallback in list order if the main key fails
+    "fallbacks": [
+        {
+            "openai/gpt-4.1-2025-04-14": [
+                "anthropic/claude-3-7-sonnet-20250219",
+                "anthropic/claude-3-5-sonnet-20241022",
+                "openai/gpt-4o-2024-11-20",
+            ]
+        }
+    ],
+}
+
+AGENT_CONFIG = {
+    "agent_type": "ReActAgent",
+    "agent_kwargs": {
         "llm_model": {
-            "name": MODEL,
-            "temperature": TEMPERATURE,
-            "num_retries": NUM_RETRIES,
+            "name": "anthropic/claude-3-7-sonnet-20250219",
+            "config": {
+                "model_list": AGENT_MODEL_LIST,
+                "router_kwargs": AGENT_ROUTER_KWARGS,
+                "fallbacks": [
+                    {
+                        "openai/gpt-4.1-2025-04-14": [
+                            "anthropic/claude-3-7-sonnet-20250219",
+                            "anthropic/claude-3-5-sonnet-20241022",
+                            "openai/gpt-4o-2024-11-20",
+                        ]
+                    }
+                ],
+            },
         },
         "hide_old_env_states": True,
     },
-)
+}
 
 CROWS_TO_DEPLOY = [
     JobDeploymentConfig(
@@ -55,8 +123,7 @@ CROWS_TO_DEPLOY = [
         name="data-analysis-crow-high" if HIGH else "data-analysis-crow",
         environment="src.fhda.data_analysis_env.DataAnalysisEnv",
         environment_variables=ENV_VARS,
-        # agent="ldp.agent.ReActAgent",
-        agent=agent,
+        agent=AgentConfig(**AGENT_CONFIG),  # type: ignore
         container_config=CONTAINER_CONFIG,
         force=True,
         frame_paths=frame_paths,
@@ -79,8 +146,8 @@ def rename_dockerfile(path: Path, new_name: str):
 
 if __name__ == "__main__":
     client = FutureHouseClient(
-        # stage=Stage.from_string(os.environ.get("CROW_ENV", ENV_VARS["STAGE"])),
-        stage=Stage.from_string(os.environ.get("CROW_ENV", "LOCAL")),
+        stage=Stage.from_string(os.environ.get("CROW_ENV", ENV_VARS["STAGE"])),
+        # stage=Stage.from_string(os.environ.get("CROW_ENV", "LOCAL")),
         organization="FutureHouse",
         auth_type=AuthType.API_KEY,
         api_key=os.environ[f"CROW_API_KEY_{ENV_VARS['STAGE']}"],
