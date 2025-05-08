@@ -99,16 +99,7 @@ You can also use mafft, clipkit, fastqc, iqtree, metaeuk, perl, phykit through t
 CHAIN_OF_THOUGHT_AGNOSTIC = """
 Follow these steps to create your notebook, using chain-of-thought reasoning at each stage:
 
-1. List Directory Contents:
-<analysis_planning>
-- Consider how to use the list_workdir tool to recursively list the directory contents.
-- Think about how to organize and present this information clearly in the notebook.
-- List potential challenges in interpreting the directory structure.
-- Consider how the directory structure might inform your approach to the analysis.
-</analysis_planning>
-Place the output of the list_workdir tool inside <directory_contents> tags.
-
-2. Load Data and Perform Descriptive Statistics:
+1. Load Data and Perform Descriptive Statistics:
 <analysis_planning>
 - Identify which data files are most relevant to resolving the task. List these files.
 - Plan how to load these files efficiently in {language}.
@@ -120,7 +111,7 @@ Place the output of the list_workdir tool inside <directory_contents> tags.
 </analysis_planning>
 Execute your plan to load data and perform descriptive statistics.
 
-3. Develop Analysis Plan:
+2. Develop Analysis Plan:
 <analysis_planning>
 - Break down each task into testable components. List these components.
 - For each component, list appropriate statistical tests or visualizations.
@@ -133,7 +124,7 @@ Execute your plan to load data and perform descriptive statistics.
 </analysis_planning>
 Write out your analysis plan as comments in the notebook.
 
-4. Execute Analysis Plan:
+3. Execute Analysis Plan:
 <analysis_planning>
 - For each step in your analysis plan, list the {language} or bash functions and libraries you'll use.
 - Think about how to structure your code for readability and efficiency.
@@ -145,7 +136,7 @@ Write out your analysis plan as comments in the notebook.
 </analysis_planning>
 Execute your analysis plan, creating new cells as needed.
 
-5. Conclude and Submit Answer:
+4. Conclude and Submit Answer:
 <thought_process>
 - Reflect on how your results relate to the original task.
 - Consider any limitations or uncertainties in your analysis.
