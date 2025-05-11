@@ -102,20 +102,14 @@ class Tortoise:
         results_path = f"{output_dir}/results_{time.strftime('%Y%m%d_%H%M%S')}.json"
         print(f"Saving all results to {results_path}")
         try:
-            # Ensure the output directory exists
             os.makedirs(output_dir, exist_ok=True)
-
-            # Convert results to a serializable format
             serializable_results = {}
             for step_id, step_result in self.results.items():
-                # Create a copy to avoid modifying the original
                 serializable_step = dict(step_result)
                 serializable_results[step_id] = serializable_step
 
-            # Write the results to a JSON file
             with open(results_path, "w") as f:
                 json.dump(serializable_results, f, indent=2)
-
             print(f"Results successfully saved to {results_path}")
         except Exception as e:
             print(f"Error saving results to {results_path}: {e}")
@@ -142,13 +136,10 @@ class Tortoise:
             for prompt_text, prompt_args in prompt_pairs[
                 :task_count
             ]:  # Limit to requested parallel count
-                # Save the prompt args
                 step_copy = copy.deepcopy(step)
                 step_copy.prompt = prompt_text
                 step_copy.prompt_args = prompt_args
-                # Format prompt
                 query = step_copy.format_prompt()
-                # Create task request
                 task_requests.append(
                     TaskRequest(
                         name=step.name,
@@ -175,18 +166,15 @@ class Tortoise:
 
         for i, step in enumerate(self.steps):
             print(f"Running step {i + 1}/{len(self.steps)}: {step.name}")
-            # Generate upload ID if not provided
             if not step.upload_id:
                 step.upload_id = f"{step.name}_{step.step_id}"
 
-            # Upload input files
             for source_path, dest_name in step.input_files.items():
                 print(f"Uploading file {source_path} as {dest_name}")
                 self.client.upload_file(
                     step.name, file_path=source_path, upload_id=step.upload_id
                 )
 
-            # Create task request
             if step.config:
                 runtime_config = RuntimeConfig(
                     max_steps=step.config.max_steps,
@@ -199,10 +187,8 @@ class Tortoise:
             else:
                 runtime_config = None
 
-            # Create task requests (with dynamic prompts if needed)
             task_requests = self._create_task_requests(step, runtime_config)
 
-            # Run tasks
             print(
                 f"Running {len(task_requests)} task{'s' if len(task_requests) > 1 else ''}"
             )
@@ -213,30 +199,25 @@ class Tortoise:
                 timeout=step.config.timeout,
             )
 
-            # Process task responses
             task_ids = [str(task.task_id) for task in task_responses]
             success_rate = sum(
                 [task.status == "success" for task in task_responses]
             ) / len(task_responses)
             print(f"Task success rate: {success_rate * 100}%")
 
-            # Store results consistently
             self.results[step.step_id] = {
                 "task_ids": task_ids,
                 "task_responses": task_responses,
                 "success_rate": success_rate,
             }
 
-            # Download output files
             os.makedirs(f"{output_dir}/{step.step_id}", exist_ok=True)
 
-            # Download output files consistently (with index suffix for multiple tasks)
             for idx, task_id in enumerate(task_ids):
                 for source_name, dest_path in step.output_files.items():
                     try:
                         # Add index suffix only when there are multiple tasks
                         path_suffix = f"_{idx}" if len(task_ids) > 1 else ""
-                        # Replace file extension with indexed version if needed
                         if "." in dest_path:
                             base, ext = os.path.splitext(dest_path)
                             dest_path_with_idx = f"{base}{path_suffix}{ext}"
@@ -259,7 +240,6 @@ class Tortoise:
                             f"Error downloading {source_name} from task {task_id}: {e}"
                         )
 
-            # Run post-processing if provided
             if step.post_process:
                 print(f"Running post-processing for step {step.step_id}")
                 step.post_process(
