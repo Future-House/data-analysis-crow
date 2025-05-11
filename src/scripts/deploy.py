@@ -12,8 +12,8 @@ from futurehouse_client.models import (
 )
 from futurehouse_client.models.app import TaskQueuesConfig
 
-HIGH = False
-ENVIRONMENT = "DEV"
+HIGH = True
+ENVIRONMENT = "PROD"
 
 ENV_VARS = {
     # "OPENAI_API_KEY": os.environ["OPENAI_API_KEY"],
@@ -32,9 +32,9 @@ frame_paths = [
     FramePath(path="state.nb_state_html", type="notebook"),
 ]
 
-MODEL = "claude-3-7-sonnet-latest"
-TEMPERATURE = 1
-NUM_RETRIES = 3
+# MODEL = "claude-3-7-sonnet-latest"
+# TEMPERATURE = 1
+# NUM_RETRIES = 3
 
 # agent = AgentConfig(
 #     agent_type="ReActAgent",

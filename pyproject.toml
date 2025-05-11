@@ -17,7 +17,7 @@ dependencies = [
   "google-auth==2.38.0",
   "google-cloud-storage==3.0.0",
   "google-cloud-secret-manager==2.23.0",
-  "futurehouse-client==0.3.18.dev25",
+  "futurehouse-client==0.3.18.dev80",
   "jupyter==1.1.1",
   "nbconvert==7.16.6",
   "notebook==7.3.2",
@@ -44,7 +44,7 @@ dev = [
 run_expt = 'scripts.configurable:_run_expt'
 
 [tool.setuptools]
-package-dir = {"" = "src"}
+package-dir = {"" = "fhda"}
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["fhda"]

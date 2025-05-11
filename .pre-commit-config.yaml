@@ -92,3 +92,7 @@ repos:
           - types-tqdm
           - typing-extensions
           - wandb
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0 # Use the latest version
+    hooks:
+      - id: detect-secrets
