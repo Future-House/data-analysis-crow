@@ -112,7 +112,7 @@ TListDir = dict[str, list[str] | dict]
 
 class NBEnvironment(Environment[NBEnvironmentState]):
     NOTEBOOK_NAME: ClassVar[str] = "notebook.ipynb"
-    EXEC_TIMEOUT: ClassVar[float | None] = 300.0
+    EXEC_TIMEOUT: ClassVar[float | None] = 600.0
 
     state: NBEnvironmentState
 

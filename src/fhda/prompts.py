@@ -25,8 +25,7 @@ Take your time to think through the question and the data before writing any cod
 """
 
 # Guidelines for R code output optimization
-R_OUTPUT_RECOMMENDATION_PROMPT = """
-R-Specific Guidelines:
+R_SPECIFIC_GUIDELINES = """Guidelines for using the R programming language:
 1. Load packages using this format to minimize verbose output:
    ```r
    if (!requireNamespace("package_name", quietly = TRUE)) {{
@@ -34,13 +33,28 @@ R-Specific Guidelines:
    }}
    suppressPackageStartupMessages(library(package_name))
    ```
+2. You must use the tidyverse wherever possible: dplyr, tidyr, ggplot2, readr, stringr, forcats, purrr, tibble, and lubridate.
 
-2. For data operations, suppress messages about column name repairs:
+3. All plots must be made using ggplot2. Here is an example of how to make a plot:
+
+   # Create a density scatter plot of FSC-A vs SSC-A
+plot_data <- as.data.frame(dmso_data[, c("FSC-A", "SSC-A")])
+scatter_plot <- ggplot2::ggplot(plot_data, ggplot2::aes(x = `FSC-A`, y = `SSC-A`)) +
+  ggplot2::geom_hex(bins = 100) +
+  ggplot2::scale_fill_viridis_c(trans = "log10") +
+  ggplot2::labs(
+    title = "FSC-A vs SSC-A Density Plot (DMSO Control)",
+    x = "FSC-A",
+    y = "SSC-A"
+  ) +
+  ggplot2::theme_minimal()
+
+3. Use explicit namespace qualification for functions. For example, use dplyr::select() instead of select().
+
+4. For data operations, suppress messages about column name repairs:
    ```r
    variable_name <- read_excel("<fpath>.csv", col_names = FALSE, .name_repair = "minimal")
    ```
-
-3. Very important: always use the tidyverse package where possible.
 """
 
 
@@ -101,7 +115,7 @@ Follow these steps to create your notebook, using chain-of-thought reasoning at 
 
 1. Load Data and Perform Descriptive Statistics:
 <analysis_planning>
-- Identify which data files are most relevant to resolving the task. List these files.
+- Identify which data files are most relevant to resolving the task.
 - Plan how to load these files efficiently in {language}.
 - List the specific descriptive statistics you plan to use (e.g., summary(), str(), head()).
 - Consider potential issues like missing data or unexpected formats. How will you handle each?
@@ -197,7 +211,7 @@ Here is the hypothesis you need to address:
 {CHAIN_OF_THOUGHT_AGNOSTIC}
 {SUBMIT_ANSWER_HYPOTHESIS}
 {GENERAL_NOTEBOOK_GUIDELINES}
-{R_OUTPUT_RECOMMENDATION_PROMPT}
+{R_SPECIFIC_GUIDELINES}
 """
 # MCQ
 MCQ_PROMPT_TEMPLATE = f"""
@@ -209,7 +223,7 @@ Here are the questions you need to address:
 {CHAIN_OF_THOUGHT_AGNOSTIC}
 {SUBMIT_ANSWER_MCQ}
 {GENERAL_NOTEBOOK_GUIDELINES}
-{R_OUTPUT_RECOMMENDATION_PROMPT}
+{R_SPECIFIC_GUIDELINES}
 """
 # Open answer
 OPEN_PROMPT_TEMPLATE = f"""
@@ -222,5 +236,5 @@ Here are the questions you need to address:
 {CHAIN_OF_THOUGHT_AGNOSTIC}
 {SUBMIT_ANSWER_OPEN}
 {GENERAL_NOTEBOOK_GUIDELINES}
-{R_OUTPUT_RECOMMENDATION_PROMPT}
+{R_SPECIFIC_GUIDELINES}
 """

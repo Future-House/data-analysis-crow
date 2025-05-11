@@ -38,6 +38,7 @@ repos:
       - id: codespell
         additional_dependencies: [".[toml]"]
         exclude_types: [jupyter]
+        exclude: ".*\\.csv$"
   - repo: https://github.com/pappasam/toml-sort
     rev: v0.24.2
     hooks:
