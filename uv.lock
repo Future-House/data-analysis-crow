@@ -709,7 +709,7 @@ requires-dist = [
     { name = "aiofiles", specifier = "==24.1.0" },
     { name = "black", marker = "extra == 'dev'" },
     { name = "fhaviary", extras = ["server"], specifier = "==0.19.0" },
-    { name = "futurehouse-client", specifier = "==0.3.18.dev25" },
+    { name = "futurehouse-client", specifier = "==0.3.18.dev80" },
     { name = "google-auth", specifier = "==2.38.0" },
     { name = "google-cloud-secret-manager", specifier = "==2.23.0" },
     { name = "google-cloud-storage", specifier = "==3.0.0" },
@@ -840,7 +840,7 @@ wheels = [
 
 [[package]]
 name = "futurehouse-client"
-version = "0.3.18.dev25"
+version = "0.3.18.dev80"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cloudpickle" },
@@ -854,9 +854,9 @@ dependencies = [
     { name = "tenacity" },
     { name = "tqdm" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/33/17/cc8bc7b5aa174d10d451a100681dc88ca4718eeb3058e0b023f0939d4358/futurehouse_client-0.3.18.dev25.tar.gz", hash = "sha256:0685836fe273999fe226204334d19d95a823a32e2beca54b1326f8161006f973", size = 145006 }
+sdist = { url = "https://files.pythonhosted.org/packages/0e/d1/16829190aacd8cf7db4415ee953d1f181c7e272c82ead50446e36ead8935/futurehouse_client-0.3.18.dev80.tar.gz", hash = "sha256:d05ccdd837895b6c4a6333045027a7a801067047cf8a3792bb3499d6582a256d", size = 145143 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e9/39/af2cebaaaf4255973b5b380728593bbf65ee60f10433c79dd532b94a27dc/futurehouse_client-0.3.18.dev25-py3-none-any.whl", hash = "sha256:eab284abb067edf1069c889a2d4b1e6628f926b30459ed3ab4fb80084a28ff9e", size = 31545 },
+    { url = "https://files.pythonhosted.org/packages/19/cb/037609233b58708ad613c2592eca52d346a3c19f63965668f0ed8afb65f0/futurehouse_client-0.3.18.dev80-py3-none-any.whl", hash = "sha256:a9cdbd4a87de70ff889a7e63a49c386f22ca28101ce07ffed11baa8fe590d472", size = 31724 },
 ]
 
 [[package]]
