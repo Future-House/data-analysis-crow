@@ -13,7 +13,7 @@ from futurehouse_client.models import (
 from futurehouse_client.models.app import TaskQueuesConfig
 
 HIGH = True
-ENVIRONMENT = "PROD"
+ENVIRONMENT = "DEV"
 
 ENV_VARS = {
     # "OPENAI_API_KEY": os.environ["OPENAI_API_KEY"],

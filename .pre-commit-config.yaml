@@ -2,6 +2,10 @@
 default_language_version:
   python: python3
 repos:
+  - repo: https://github.com/psf/black-pre-commit-mirror
+    rev: 25.1.0
+    hooks:
+      - id: black-jupyter
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
@@ -93,6 +97,6 @@ repos:
           - typing-extensions
           - wandb
   - repo: https://github.com/Yelp/detect-secrets
-    rev: v1.4.0 # Use the latest version
+    rev: v1.5.0 # Use the latest version
     hooks:
       - id: detect-secrets

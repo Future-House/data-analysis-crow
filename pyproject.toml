@@ -44,7 +44,7 @@ dev = [
 run_expt = 'scripts.configurable:_run_expt'
 
 [tool.setuptools]
-package-dir = {"" = "src"}
+package-dir = {"" = "fhda"}
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["fhda"]
