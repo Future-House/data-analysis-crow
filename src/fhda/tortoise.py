@@ -15,7 +15,7 @@ from futurehouse_client.models.app import AuthType
 
 
 class StepConfig(BaseModel):
-    """Configuration for a step in the pipeline."""
+    """Agent runtime configuration."""
 
     language: str = Field(
         default="PYTHON", description="Language for execution environment"
@@ -24,7 +24,10 @@ class StepConfig(BaseModel):
         default=30, description="Maximum number of steps for the agent"
     )
     timeout: int = Field(default=15 * 60, description="Timeout for the step in seconds")
-    eval: bool = Field(default=True, description="Whether to use eval mode")
+    eval: bool = Field(
+        default=True,
+        description="For Finch, this indicates whether this is an API call or UI call. Setting it to True removes the automatic CoT additions.",
+    )
 
 
 class Step(BaseModel):
@@ -199,7 +202,7 @@ class Tortoise:
             task_responses = await self.client.arun_tasks_until_done(
                 task_requests,
                 progress_bar=True,
-                verbose=True,
+                verbose=False,
                 timeout=step.config.timeout,
             )
 
