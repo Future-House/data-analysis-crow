@@ -174,6 +174,7 @@ class DataAnalysisEnv(NBEnvironment):
         trajectory_id: str | None = None,
         user_id: str | None = None,
         environment_config: dict[str, Any] | None = None,
+        continued_trajectory_id: str | None = None,
     ) -> "DataAnalysisEnv":
         """
         Perform data analysis on a user query.
@@ -188,18 +189,21 @@ class DataAnalysisEnv(NBEnvironment):
         logger.info("environment_config: %s", environment_config)
         logger.info("trajectory_id: %s", trajectory_id)
         logger.info("user_id: %s", user_id)
-        # Track cost of running the environment
+        logger.info("continued_trajectory_id: %s", continued_trajectory_id)
         enable_cost_tracking()
+
         if (
-            not gcs_artifact_path
+            (not gcs_artifact_path) and not continued_trajectory_id
         ):  # Platform jobs should always be associated with data from a GCS bucket
             raise NotImplementedError(
                 "Running crow jobs without gcs_artifact_path is not supported"
             )
 
         if user_id is None:
+            logger.warning("No user_id provided, using default_user")
             user_id = "default_user"
         if trajectory_id is None:
+            logger.warning("No trajectory_id provided, using time-based id")
             trajectory_id = f"{gcs_artifact_path}-{time.time()}"
         if environment_config:
             kwargs = {
@@ -214,11 +218,19 @@ class DataAnalysisEnv(NBEnvironment):
         trajectory_path = (
             cfg.DATA_STORAGE_PATH / "user_trajectories" / user_id / trajectory_id
         )
-        if environment_config.get("gcs_override", False):
-            data_path = cfg.DATA_STORAGE_PATH / gcs_artifact_path
+        if continued_trajectory_id:
+            data_path = (
+                cfg.DATA_STORAGE_PATH
+                / "user_trajectories"
+                / user_id
+                / continued_trajectory_id
+            )
+            logger.info("Continuing trajectory from %s", continued_trajectory_id)
+        elif environment_config.get("gcs_override", False):
+            data_path = cfg.DATA_STORAGE_PATH / gcs_artifact_path  # type: ignore
         else:
             data_path = (
-                cfg.DATA_STORAGE_PATH / "user_data" / user_id / gcs_artifact_path
+                cfg.DATA_STORAGE_PATH / "user_data" / user_id / gcs_artifact_path  # type: ignore
             )
         logger.info("Trajectory path: %s", trajectory_path)
         logger.info("Data path: %s", data_path)
