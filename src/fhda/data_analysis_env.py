@@ -15,7 +15,7 @@ from futurehouse_client.models import TaskRequest, AuthType
 from futurehouse_client import FutureHouseClient
 
 from .notebook_env import NBEnvironment
-from .utils import NBLanguage, MultipleChoiceQuestion
+from .utils import NBLanguage, MultipleChoiceQuestion, extract_xml_content
 from . import prompts
 from . import config as cfg
 
@@ -218,7 +218,9 @@ class DataAnalysisEnv(NBEnvironment):
         trajectory_path = (
             cfg.DATA_STORAGE_PATH / "user_trajectories" / user_id / trajectory_id
         )
+
         if continued_trajectory_id:
+            kwargs["rerun_all_cells"] = True
             data_path = (
                 cfg.DATA_STORAGE_PATH
                 / "user_trajectories"
@@ -226,6 +228,28 @@ class DataAnalysisEnv(NBEnvironment):
                 / continued_trajectory_id
             )
             logger.info("Continuing trajectory from %s", continued_trajectory_id)
+            if cfg.PLATFORM_API_KEY is None:
+                logger.warning(
+                    "Platform API key is not set, can't fetch previous trajectory"
+                )
+                previous_research_question = None
+                previous_final_answer = None
+            else:
+                client = FutureHouseClient(
+                    stage=cfg.CROW_STAGE,
+                    auth_type=AuthType.API_KEY,
+                    api_key=cfg.PLATFORM_API_KEY,
+                )
+                previous_trajectory = client.get_task(
+                    continued_trajectory_id, verbose=True
+                )
+                previous_research_question = extract_xml_content(
+                    previous_trajectory.query, "query"
+                )
+                previous_final_answer = previous_trajectory.environment_frame["state"][
+                    "state"
+                ]["answer"]
+
         elif environment_config.get("gcs_override", False):
             data_path = cfg.DATA_STORAGE_PATH / gcs_artifact_path  # type: ignore
         else:
@@ -247,7 +271,7 @@ class DataAnalysisEnv(NBEnvironment):
         kwargs["language"] = language
         logger.info("Language: %s", language.name)
 
-        if not environment_config.get("eval", False):
+        if not environment_config.get("eval", False) and not continued_trajectory_id:
             logger.info(
                 "Platform job detected, augmenting user query with CoT instructions"
             )
@@ -260,6 +284,17 @@ class DataAnalysisEnv(NBEnvironment):
                 f"{task}\n"
                 f"</query>\n"
             )
+        if continued_trajectory_id and not environment_config.get("eval", False):
+            logger.info(
+                "Continuation job detected, augmenting user query with continuation instructions"
+            )
+            task = prompts.CONTINUATION_PROMPT_TEMPLATE.format(
+                previous_research_question=previous_research_question,
+                previous_final_answer=previous_final_answer,
+                query=task,
+                language=kwargs.get("language", "PYTHON"),
+            )
+
         nb_path = trajectory_path / NBEnvironment.NOTEBOOK_NAME
         logger.info("NB path: %s", nb_path)
 

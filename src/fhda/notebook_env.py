@@ -124,6 +124,7 @@ class NBEnvironment(Environment[NBEnvironmentState]):
         language: utils.NBLanguage = utils.NBLanguage.PYTHON,
         allow_download_from_gcs: bool = False,
         run_notebook_on_edit: bool = False,
+        rerun_all_cells: bool = False,
     ):
         """Initialize a notebook environment.
 
@@ -140,6 +141,7 @@ class NBEnvironment(Environment[NBEnvironmentState]):
                 task requires data on GCS. Disabled by default.
             run_notebook_on_edit: If True (default), the whole notebook will be rerun
                 after each edit. If False, only the cell that was edited will be rerun.
+            rerun_all_cells: If True, the whole notebook will be run at the beginning of the episode. This is for continued trajectories.
         """
         self.work_dir = Path(work_dir)
         self.nb_path = Path(nb_path) if nb_path else self.work_dir / self.NOTEBOOK_NAME
@@ -149,6 +151,7 @@ class NBEnvironment(Environment[NBEnvironmentState]):
         self.allow_download_from_gcs = allow_download_from_gcs
         self.use_docker = cfg.USE_DOCKER
         self.run_notebook_on_edit = run_notebook_on_edit
+        self.rerun_all_cells = rerun_all_cells
 
     async def reset(self) -> tuple[Messages, list[Tool]]:
         nb_path, work_dir = self._set_work_dir()
@@ -158,6 +161,8 @@ class NBEnvironment(Environment[NBEnvironmentState]):
             language=self.language,
             use_docker=self.use_docker,
         )
+        if self.rerun_all_cells:
+            await self.run_notebook()
 
         self.tools = [
             Tool.from_function(self.edit_cell),
