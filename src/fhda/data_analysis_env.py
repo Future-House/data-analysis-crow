@@ -249,6 +249,9 @@ class DataAnalysisEnv(NBEnvironment):
                 previous_final_answer = previous_trajectory.environment_frame["state"][
                     "state"
                 ]["answer"]
+                kwargs["language"] = previous_trajectory.environment_frame["state"][
+                    "info"
+                ]["language"]
 
         elif environment_config.get("gcs_override", False):
             data_path = cfg.DATA_STORAGE_PATH / gcs_artifact_path  # type: ignore
@@ -266,10 +269,14 @@ class DataAnalysisEnv(NBEnvironment):
                 shutil.copytree(item, trajectory_path / item.name, dirs_exist_ok=True)
         logger.info("Filtered kwargs: %s", kwargs)
 
-        language = getattr(NBLanguage, environment_config.get("language", "PYTHON"))
-        # Overwrite the language in the kwargs with NBLanguage enum
-        kwargs["language"] = language
-        logger.info("Language: %s", language.name)
+        # If it's continued, we already have the language
+        if continued_trajectory_id:
+            logger.info("Language already set from previous trajectory notebook %s", kwargs["language"])
+        else:
+            language = getattr(NBLanguage, environment_config.get("language", "PYTHON"))
+            # Overwrite the language in the kwargs with NBLanguage enum
+            kwargs["language"] = language
+            logger.info("Language: %s", language.name)
 
         if not environment_config.get("eval", False) and not continued_trajectory_id:
             logger.info(
