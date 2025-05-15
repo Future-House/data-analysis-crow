@@ -235,6 +235,7 @@ class DataAnalysisEnv(NBEnvironment):
                 previous_research_question = None
                 previous_final_answer = None
             else:
+                logger.info("Fetching previous trajectory")
                 client = FutureHouseClient(
                     stage=cfg.CROW_STAGE,
                     auth_type=AuthType.API_KEY,
@@ -249,9 +250,11 @@ class DataAnalysisEnv(NBEnvironment):
                 previous_final_answer = previous_trajectory.environment_frame["state"][
                     "state"
                 ]["answer"]
-                kwargs["language"] = previous_trajectory.environment_frame["state"][
-                    "info"
-                ]["language"]
+                language = previous_trajectory.environment_frame["state"]["info"][
+                    "language"
+                ]
+                language = getattr(NBLanguage, language.upper())
+                kwargs["language"] = language
 
         elif environment_config.get("gcs_override", False):
             data_path = cfg.DATA_STORAGE_PATH / gcs_artifact_path  # type: ignore
@@ -271,7 +274,10 @@ class DataAnalysisEnv(NBEnvironment):
 
         # If it's continued, we already have the language
         if continued_trajectory_id:
-            logger.info("Language already set from previous trajectory notebook %s", kwargs["language"])
+            logger.info(
+                "Language already set from previous trajectory notebook %s",
+                kwargs.get("language", None),
+            )
         else:
             language = getattr(NBLanguage, environment_config.get("language", "PYTHON"))
             # Overwrite the language in the kwargs with NBLanguage enum

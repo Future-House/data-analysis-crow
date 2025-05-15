@@ -13,7 +13,7 @@ from futurehouse_client.models import (
 from futurehouse_client.models.app import TaskQueuesConfig
 
 HIGH = True
-ENVIRONMENT = "DEV"
+ENVIRONMENT = "PROD"
 
 ENV_VARS = {
     # "OPENAI_API_KEY": os.environ["OPENAI_API_KEY"],
@@ -21,7 +21,7 @@ ENV_VARS = {
     "USE_DOCKER": "false",
     "STAGE": ENVIRONMENT,
     "ENVIRONMENT": ENVIRONMENT,
-    "API_KEY": os.environ[f"CROW_API_KEY_{ENVIRONMENT}"],
+    "FH_API_KEY": os.environ[f"CROW_API_KEY_{ENVIRONMENT}"],
 }
 
 CONTAINER_CONFIG = DockerContainerConfiguration(cpu="8", memory="16Gi")
