@@ -15,7 +15,7 @@ from futurehouse_client.models import TaskRequest, AuthType
 from futurehouse_client import FutureHouseClient
 
 from .notebook_env import NBEnvironment
-from .utils import NBLanguage, MultipleChoiceQuestion
+from .utils import NBLanguage, MultipleChoiceQuestion, extract_xml_content
 from . import prompts
 from . import config as cfg
 
@@ -174,6 +174,7 @@ class DataAnalysisEnv(NBEnvironment):
         trajectory_id: str | None = None,
         user_id: str | None = None,
         environment_config: dict[str, Any] | None = None,
+        continued_trajectory_id: str | None = None,
     ) -> "DataAnalysisEnv":
         """
         Perform data analysis on a user query.
@@ -188,18 +189,21 @@ class DataAnalysisEnv(NBEnvironment):
         logger.info("environment_config: %s", environment_config)
         logger.info("trajectory_id: %s", trajectory_id)
         logger.info("user_id: %s", user_id)
-        # Track cost of running the environment
+        logger.info("continued_trajectory_id: %s", continued_trajectory_id)
         enable_cost_tracking()
+
         if (
-            not gcs_artifact_path
+            (not gcs_artifact_path) and not continued_trajectory_id
         ):  # Platform jobs should always be associated with data from a GCS bucket
             raise NotImplementedError(
                 "Running crow jobs without gcs_artifact_path is not supported"
             )
 
         if user_id is None:
+            logger.warning("No user_id provided, using default_user")
             user_id = "default_user"
         if trajectory_id is None:
+            logger.warning("No trajectory_id provided, using time-based id")
             trajectory_id = f"{gcs_artifact_path}-{time.time()}"
         if environment_config:
             kwargs = {
@@ -214,11 +218,49 @@ class DataAnalysisEnv(NBEnvironment):
         trajectory_path = (
             cfg.DATA_STORAGE_PATH / "user_trajectories" / user_id / trajectory_id
         )
-        if environment_config.get("gcs_override", False):
-            data_path = cfg.DATA_STORAGE_PATH / gcs_artifact_path
+
+        if continued_trajectory_id:
+            kwargs["rerun_all_cells"] = True
+            data_path = (
+                cfg.DATA_STORAGE_PATH
+                / "user_trajectories"
+                / user_id
+                / continued_trajectory_id
+            )
+            logger.info("Continuing trajectory from %s", continued_trajectory_id)
+            if cfg.PLATFORM_API_KEY is None:
+                logger.warning(
+                    "Platform API key is not set, can't fetch previous trajectory"
+                )
+                previous_research_question = None
+                previous_final_answer = None
+            else:
+                logger.info("Fetching previous trajectory")
+                client = FutureHouseClient(
+                    stage=cfg.CROW_STAGE,
+                    auth_type=AuthType.API_KEY,
+                    api_key=cfg.PLATFORM_API_KEY,
+                )
+                previous_trajectory = client.get_task(
+                    continued_trajectory_id, verbose=True
+                )
+                previous_research_question = extract_xml_content(
+                    previous_trajectory.query, "query"
+                )
+                previous_final_answer = previous_trajectory.environment_frame["state"][
+                    "state"
+                ]["answer"]
+                language = previous_trajectory.environment_frame["state"]["info"][
+                    "language"
+                ]
+                language = getattr(NBLanguage, language.upper())
+                kwargs["language"] = language
+
+        elif environment_config.get("gcs_override", False):
+            data_path = cfg.DATA_STORAGE_PATH / gcs_artifact_path  # type: ignore
         else:
             data_path = (
-                cfg.DATA_STORAGE_PATH / "user_data" / user_id / gcs_artifact_path
+                cfg.DATA_STORAGE_PATH / "user_data" / user_id / gcs_artifact_path  # type: ignore
             )
         logger.info("Trajectory path: %s", trajectory_path)
         logger.info("Data path: %s", data_path)
@@ -230,12 +272,19 @@ class DataAnalysisEnv(NBEnvironment):
                 shutil.copytree(item, trajectory_path / item.name, dirs_exist_ok=True)
         logger.info("Filtered kwargs: %s", kwargs)
 
-        language = getattr(NBLanguage, environment_config.get("language", "PYTHON"))
-        # Overwrite the language in the kwargs with NBLanguage enum
-        kwargs["language"] = language
-        logger.info("Language: %s", language.name)
+        # If it's continued, we already have the language
+        if continued_trajectory_id:
+            logger.info(
+                "Language already set from previous trajectory notebook %s",
+                kwargs.get("language", None),
+            )
+        else:
+            language = getattr(NBLanguage, environment_config.get("language", "PYTHON"))
+            # Overwrite the language in the kwargs with NBLanguage enum
+            kwargs["language"] = language
+            logger.info("Language: %s", language.name)
 
-        if not environment_config.get("eval", False):
+        if not environment_config.get("eval", False) and not continued_trajectory_id:
             logger.info(
                 "Platform job detected, augmenting user query with CoT instructions"
             )
@@ -248,6 +297,17 @@ class DataAnalysisEnv(NBEnvironment):
                 f"{task}\n"
                 f"</query>\n"
             )
+        if continued_trajectory_id and not environment_config.get("eval", False):
+            logger.info(
+                "Continuation job detected, augmenting user query with continuation instructions"
+            )
+            task = prompts.CONTINUATION_PROMPT_TEMPLATE.format(
+                previous_research_question=previous_research_question,
+                previous_final_answer=previous_final_answer,
+                query=task,
+                language=kwargs.get("language", "PYTHON"),
+            )
+
         nb_path = trajectory_path / NBEnvironment.NOTEBOOK_NAME
         logger.info("NB path: %s", nb_path)
 

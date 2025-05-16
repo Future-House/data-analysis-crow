@@ -6,6 +6,7 @@ repos:
     rev: 25.1.0
     hooks:
       - id: black-jupyter
+        types: [jupyter]
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:

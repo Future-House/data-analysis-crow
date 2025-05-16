@@ -5,6 +5,7 @@ from collections.abc import Iterable
 from enum import StrEnum, auto
 from typing import TYPE_CHECKING, assert_never
 import os
+import re
 
 import nbformat
 from traitlets.config import Config
@@ -438,3 +439,23 @@ def nb_to_html(nb: nbformat.NotebookNode) -> str:
     exporter = HTMLExporter(config=c)
     html, _ = exporter.from_notebook_node(nb)
     return html
+
+
+def extract_xml_content(text, tag_name):
+    """
+    Extract content between XML-like tags from text.
+
+    Args:
+        text (str): The text containing XML-like tags
+        tag_name (str): The name of the tag to extract content from
+
+    Returns:
+        str or None: The content between the tags, or None if not found
+    """
+
+    pattern = f"<{tag_name}>(.*?)</{tag_name}>"
+    match = re.search(pattern, text, re.DOTALL)
+
+    if match:
+        return match.group(1).strip()
+    return None

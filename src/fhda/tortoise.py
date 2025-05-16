@@ -7,11 +7,18 @@ from os import PathLike
 import time
 import json
 from pydantic import BaseModel, Field
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+)
 from . import prompts
 
 from futurehouse_client import FutureHouseClient
 from futurehouse_client.models import TaskRequest, RuntimeConfig
 from futurehouse_client.models.app import AuthType
+from futurehouse_client.clients.rest_client import TaskFetchError
 
 
 class StepConfig(BaseModel):
@@ -95,7 +102,9 @@ class Tortoise:
 
     def __init__(self, api_key: str):
         """Initialize the tortoise framework with FutureHouse API key."""
-        self.client = FutureHouseClient(auth_type=AuthType.API_KEY, api_key=api_key)
+        self.client = FutureHouseClient(
+            auth_type=AuthType.API_KEY, api_key=api_key, verbose=True
+        )
         self.steps: list[Step] = []
         self.results: dict[str, Any] = {}
 
@@ -118,6 +127,33 @@ class Tortoise:
             print(f"Results successfully saved to {results_path}")
         except Exception as e:
             print(f"Error saving results to {results_path}: {e}")
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type(Exception),
+    )
+    def _upload_file_with_retry(
+        self, job_name: str, file_path: str, upload_id: str
+    ) -> None:
+        """Upload a file with retry logic."""
+        self.client.upload_file(job_name, file_path=file_path, upload_id=upload_id)
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type(Exception),
+    )
+    def _download_file_with_retry(
+        self, job_name: str, trajectory_id: str, file_path: str, destination_path: str
+    ) -> None:
+        """Download a file with retry logic."""
+        self.client.download_file(
+            job_name,
+            trajectory_id=trajectory_id,
+            file_path=file_path,
+            destination_path=destination_path,
+        )
 
     def _create_task_requests(
         self, step: Step, runtime_config: RuntimeConfig
@@ -165,6 +201,23 @@ class Tortoise:
 
         return task_requests
 
+    @retry(
+        stop=stop_after_attempt(5),
+        wait=wait_exponential(multiplier=1, min=2, max=30),
+        retry=retry_if_exception_type((Exception, TaskFetchError)),
+    )
+    async def _run_tasks_with_retry(
+        self, task_requests, progress_bar, verbose, timeout
+    ):
+        """Run tasks with retry logic."""
+        return await self.client.arun_tasks_until_done(
+            task_requests,
+            progress_bar=progress_bar,
+            verbose=verbose,
+            timeout=timeout,
+            concurrency=1,  # Reduce concurrency to avoid overwhelming the server
+        )
+
     async def run_pipeline(
         self, output_dir: str | PathLike = "output"
     ) -> dict[str, Any]:
@@ -178,9 +231,15 @@ class Tortoise:
 
             for source_path, dest_name in step.input_files.items():
                 print(f"Uploading file {source_path} as {dest_name}")
-                self.client.upload_file(
-                    step.name, file_path=source_path, upload_id=step.upload_id
-                )
+                try:
+                    self._upload_file_with_retry(
+                        step.name, file_path=source_path, upload_id=step.upload_id
+                    )
+                except Exception as e:
+                    print(
+                        f"Failed to upload file {source_path} after multiple retries: {e}"
+                    )
+                    raise
 
             if step.config:
                 runtime_config = RuntimeConfig(
@@ -199,12 +258,25 @@ class Tortoise:
             print(
                 f"Running {len(task_requests)} task{'s' if len(task_requests) > 1 else ''}"
             )
-            task_responses = await self.client.arun_tasks_until_done(
-                task_requests,
-                progress_bar=True,
-                verbose=False,
-                timeout=step.config.timeout,
-            )
+            try:
+                task_responses = await self._run_tasks_with_retry(
+                    task_requests,
+                    progress_bar=True,
+                    verbose=False,
+                    timeout=step.config.timeout,
+                )
+            except Exception as e:
+                print(
+                    f"Failed to run tasks for step {step.step_id} after multiple retries: {e}"
+                )
+                # Create an error result entry and continue to the next step
+                self.results[step.step_id] = {
+                    "task_ids": [],
+                    "task_responses": [],
+                    "success_rate": 0,
+                    "error": str(e),
+                }
+                continue
 
             task_ids = [str(task.task_id) for task in task_responses]
             success_rate = sum(
@@ -236,12 +308,17 @@ class Tortoise:
                             os.path.dirname(os.path.abspath(path)), exist_ok=True
                         )
                         print(f"Downloading file {source_name} to {path}")
-                        self.client.download_file(
-                            step.name,
-                            trajectory_id=task_id,
-                            file_path=source_name,
-                            destination_path=path,
-                        )
+                        try:
+                            self._download_file_with_retry(
+                                step.name,
+                                trajectory_id=task_id,
+                                file_path=source_name,
+                                destination_path=path,
+                            )
+                        except Exception as e:
+                            print(
+                                f"Failed to download {source_name} from task {task_id} after multiple retries: {e}"
+                            )
                     except Exception as e:
                         print(
                             f"Error downloading {source_name} from task {task_id}: {e}"
