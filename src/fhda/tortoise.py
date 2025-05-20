@@ -103,7 +103,7 @@ class Tortoise:
     def __init__(self, api_key: str):
         """Initialize the tortoise framework with FutureHouse API key."""
         self.client = FutureHouseClient(
-            auth_type=AuthType.API_KEY, api_key=api_key, verbose=True
+            auth_type=AuthType.API_KEY, api_key=api_key, verbose_logging=True
         )
         self.steps: list[Step] = []
         self.results: dict[str, Any] = {}
