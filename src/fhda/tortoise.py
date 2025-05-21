@@ -35,6 +35,10 @@ class StepConfig(BaseModel):
         default=True,
         description="For Finch, this indicates whether this is an API call or UI call. Setting it to True removes the automatic CoT additions.",
     )
+    gcs_override: bool = Field(
+        default=False,
+        description="If True, the step will use the GCS override path for the input files. This is only available to certain users.",
+    )
 
 
 class Step(BaseModel):
@@ -248,6 +252,7 @@ class Tortoise:
                     environment_config={
                         "eval": step.config.eval,
                         "language": step.config.language,
+                        "gcs_override": step.config.gcs_override,
                     },
                 )
             else:
