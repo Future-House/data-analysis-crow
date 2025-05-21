@@ -127,7 +127,7 @@ class Tortoise:
                 serializable_results[step_id] = dict(step_result)
 
             with open(results_path, "w") as f:
-                json.dump(serializable_results, f, indent=2)
+                json.dumps(serializable_results, f, indent=2, default=str)
             print(f"Results successfully saved to {results_path}")
         except Exception as e:
             print(f"Error saving results to {results_path}: {e}")
