@@ -16,8 +16,8 @@ HIGH = True
 ENVIRONMENT = "PROD"
 
 ENV_VARS = {
-    # "OPENAI_API_KEY": os.environ["OPENAI_API_KEY"],
-    # "ANTHROPIC_API_KEY": os.environ["ANTHROPIC_API_KEY"],
+    "OPENAI_API_KEY": os.environ["OPENAI_API_KEY"],
+    "ANTHROPIC_API_KEY": os.environ["ANTHROPIC_API_KEY"],
     "USE_DOCKER": "false",
     "STAGE": ENVIRONMENT,
     "ENVIRONMENT": ENVIRONMENT,
@@ -53,28 +53,24 @@ AGENT_MODEL_LIST = [
         "model_name": "anthropic/claude-3-7-sonnet-20250219",
         "litellm_params": {
             "model": "anthropic/claude-3-7-sonnet-20250219",
-            "api_key": os.environ["ANTHROPIC_API_KEY"],
         },
     },
     {
         "model_name": "openai/gpt-4.1-2025-04-14",
         "litellm_params": {
             "model": "openai/gpt-4.1-2025-04-14",
-            "api_key": os.environ["OPENAI_API_KEY"],
         },
     },
     {
         "model_name": "anthropic/claude-3-5-sonnet-20241022",
         "litellm_params": {
             "model": "anthropic/claude-3-5-sonnet-20241022",
-            "api_key": os.environ["ANTHROPIC_API_KEY"],
         },
     },
     {
         "model_name": "openai/gpt-4o-2024-11-20",
         "litellm_params": {
             "model": "openai/gpt-4o-2024-11-20",
-            "api_key": os.environ["OPENAI_API_KEY"],
         },
     },
 ]
