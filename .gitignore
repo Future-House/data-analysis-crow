@@ -1,6 +1,7 @@
 
 # User-specific
 local
+tutorial/output/
 
 # IntelliJ
 out/
