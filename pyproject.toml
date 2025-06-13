@@ -8,6 +8,7 @@ authors = [
 ]
 dependencies = [
   "aiodocker==0.24.0",
+  "anthropic==0.52.2", # this is necessary for tortoise, remove in favor of LMI when it works with search
   "fhaviary[server]==0.19.0",
   "ldp==0.26.0",
   "pandas==2.2.3",
@@ -17,11 +18,12 @@ dependencies = [
   "google-auth==2.38.0",
   "google-cloud-storage==3.0.0",
   "google-cloud-secret-manager==2.23.0",
-  "futurehouse-client==0.3.18",
+  "futurehouse-client==0.3.19",
   "jupyter==1.1.1",
   "nbconvert==7.16.6",
   "notebook==7.3.2",
-  "nbformat==5.10.4"
+  "nbformat==5.10.4",
+  "seaborn==0.13.2"
 ]
 description = "Data analysis crow"
 name = "fhda"
